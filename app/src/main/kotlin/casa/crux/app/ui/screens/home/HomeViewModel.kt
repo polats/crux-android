@@ -18,6 +18,7 @@ import casa.crux.app.data.api.ServerAuthenticationException
 import casa.crux.app.data.api.ServerConnection
 import casa.crux.app.data.api.ServerHealthHttpException
 import casa.crux.app.data.repository.LocalServerManager
+import casa.crux.app.data.crux.CruxRepository
 import casa.crux.app.data.repository.ServerRepository
 import casa.crux.app.data.repository.normalizeServerUrl
 import casa.crux.app.data.repository.SettingsRepository
@@ -72,6 +73,8 @@ data class HomeUiState(
     val setupCommand: String? = null,
     /** Matches the stored default, so the card cannot flash before the setting arrives. */
     val showLocalRuntime: Boolean = false,
+    /** Whether a Crux provider account is connected; Spaces is unusable without one. */
+    val cruxSignedIn: Boolean = false,
     val localProxyEnabled: Boolean = false,
     val localProxyUrl: String = "",
     val localProxyNoProxy: String = LocalServerManager.DEFAULT_NO_PROXY_LIST,
@@ -101,6 +104,7 @@ class HomeViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val diagnosticLogRepository: DiagnosticLogRepository,
     private val updateRepository: UpdateRepository,
+    private val cruxRepository: CruxRepository,
 ) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -136,6 +140,13 @@ class HomeViewModel @Inject constructor(
     }
 
     init {
+        // Spaces needs an account, so Home has to know whether there is one before it can
+        // offer that button as anything other than a route to signing in.
+        viewModelScope.launch {
+            cruxRepository.signedIn.collect { signedIn ->
+                _uiState.update { it.copy(cruxSignedIn = signedIn == true) }
+            }
+        }
         loadServers()
         bindToService()
         observeSettings()

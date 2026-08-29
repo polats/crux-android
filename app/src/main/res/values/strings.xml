@@ -769,6 +769,8 @@ Tokens: ~%4$d -&gt; ~%5$d</string>
     <string name="deployments_connect">Connect</string>
     <string name="deployments_retry">Retry</string>
     <string name="deployments_delete">Delete</string>
+    <string name="deployments_delete_confirm_title">Delete this space?</string>
+    <string name="deployments_delete_confirm_message">%1$s and everything on it will be destroyed on the provider. This cannot be undone.</string>
     <string name="deployments_field_name">Name</string>
     <string name="deployments_field_name_hint">Letters, numbers and hyphens</string>
     <string name="deployments_field_name_invalid">Use only letters, numbers and hyphens</string>

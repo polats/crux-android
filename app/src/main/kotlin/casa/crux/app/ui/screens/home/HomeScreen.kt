@@ -224,8 +224,22 @@ fun HomeScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.home_title)) },
                 actions = {
-                    IconButton(onClick = onNavigateToDeployments) {
-                        Icon(Icons.Default.Cloud, contentDescription = stringResource(R.string.deployments_title))
+                    // Dimmed without an account, and routed to sign-in rather than opening a
+                    // Spaces screen that could only tell you to go and sign in.
+                    IconButton(
+                        onClick = {
+                            if (uiState.cruxSignedIn) onNavigateToDeployments() else onNavigateToAccount()
+                        }
+                    ) {
+                        Icon(
+                            Icons.Default.Cloud,
+                            contentDescription = stringResource(R.string.deployments_title),
+                            tint = if (uiState.cruxSignedIn) {
+                                LocalContentColor.current
+                            } else {
+                                LocalContentColor.current.copy(alpha = 0.38f)
+                            },
+                        )
                     }
                     IconButton(onClick = onNavigateToAccount) {
                         Icon(

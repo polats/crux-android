@@ -33,6 +33,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -46,6 +49,7 @@ import androidx.compose.runtime.DisposableEffect
 import casa.crux.app.R
 import casa.crux.app.data.crux.CruxDeployment
 import casa.crux.app.ui.components.AppCardShape
+import casa.crux.app.ui.components.AppDialog
 import casa.crux.app.ui.components.AppPrimaryButton
 import casa.crux.app.ui.components.AppSecondaryButton
 import com.google.accompanist.swiperefresh.SwipeRefresh
@@ -228,6 +232,10 @@ private fun DeploymentCard(
     onRetry: () -> Unit,
     onDelete: () -> Unit,
 ) {
+    // Deleting a space destroys a running server on the provider, and it cannot be undone
+    // from here or anywhere else, so it is worth one tap of friction.
+    var confirmDelete by remember { mutableStateOf(false) }
+
     Card(
         shape = AppCardShape,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
@@ -258,7 +266,7 @@ private fun DeploymentCard(
                 if (busy) {
                     CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
                 }
-                TextButton(onClick = onDelete, enabled = !busy) {
+                TextButton(onClick = { confirmDelete = true }, enabled = !busy) {
                     Text(stringResource(R.string.deployments_delete))
                 }
                 if (deployment.status.name == "ERROR") {
@@ -271,6 +279,48 @@ private fun DeploymentCard(
                         Text(stringResource(R.string.deployments_connect))
                     }
                 }
+            }
+        }
+    }
+
+    if (confirmDelete) {
+        DeleteSpaceDialog(
+            name = deployment.displayName,
+            onDismiss = { confirmDelete = false },
+            onConfirm = {
+                confirmDelete = false
+                onDelete()
+            },
+        )
+    }
+}
+
+@Composable
+private fun DeleteSpaceDialog(
+    name: String,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+) {
+    AppDialog(onDismissRequest = onDismiss) {
+        Text(
+            text = stringResource(R.string.deployments_delete_confirm_title),
+            style = MaterialTheme.typography.headlineSmall,
+            modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 24.dp),
+        )
+        Text(
+            text = stringResource(R.string.deployments_delete_confirm_message, name),
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp),
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.End,
+        ) {
+            AppSecondaryButton(onClick = onDismiss, outlined = true) {
+                Text(stringResource(R.string.cancel))
+            }
+            AppPrimaryButton(onClick = onConfirm, destructive = true) {
+                Text(stringResource(R.string.deployments_delete))
             }
         }
     }
