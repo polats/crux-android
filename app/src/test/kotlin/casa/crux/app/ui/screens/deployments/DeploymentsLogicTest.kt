@@ -75,10 +75,10 @@ class DeploymentsLogicTest {
     }
 
     @Test
-    fun `github alone is not a deploy target`() {
+    fun `every provider can be a deploy target now that github hosts codespaces`() {
         assertEquals("huggingface", createTargetFor(account("huggingface")))
         assertEquals("railway", createTargetFor(account("railway")))
-        assertNull(createTargetFor(account("github")))
+        assertEquals("github", createTargetFor(account("github")))
         assertNull(createTargetFor(null))
     }
 
@@ -121,6 +121,21 @@ class DeploymentsLogicTest {
         assertEquals("ws-1", railway.workspaceId)
         // An empty password means "generate one", so it must not be sent as an empty string.
         assertNull(railway.password)
+
+        // A codespace comes from the template repository, so it needs neither an owner prefix
+        // nor a workspace — just a name.
+        val codespace = buildRequest(
+            provider = "github",
+            account = account("github"),
+            name = "  my-space  ",
+            workspace = null,
+            template = null,
+            password = "",
+        )
+        assertTrue(codespace is CruxCreateRequest.Codespace)
+        codespace as CruxCreateRequest.Codespace
+        assertEquals("my-space", codespace.name)
+        assertNull(codespace.password)
     }
 
     @Test
@@ -132,7 +147,10 @@ class DeploymentsLogicTest {
             buildRequest("huggingface", account("huggingface"), "bad name", null, null, "")
         )
         assertNull(
-            buildRequest("github", account("github"), "my-space", null, null, "")
+            buildRequest("github", account("github"), "bad name", null, null, "")
+        )
+        assertNull(
+            buildRequest("nothing", account("github"), "my-space", null, null, "")
         )
     }
 

@@ -242,7 +242,10 @@ class DeploymentsViewModel @Inject constructor(
 
 /** Which provider a new space would be created under, and whether that is even possible. */
 internal fun createTargetFor(account: CruxAccount?): String? =
-    account?.activeProvider?.takeIf { it == "huggingface" || it == "railway" }
+    account?.activeProvider?.takeIf { it in DEPLOY_PROVIDERS }
+
+/** Mirrors DEPLOY_PROVIDERS on crux.casa: every login provider can now hold a deployment. */
+internal val DEPLOY_PROVIDERS = setOf("huggingface", "railway", "github")
 
 /** Hugging Face wants `owner/name`; the owner comes from the signed-in identity. */
 internal fun huggingFaceRepoId(account: CruxAccount?, name: String): String? {

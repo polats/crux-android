@@ -32,7 +32,8 @@ import kotlin.random.Random
 
 /**
  * The web dashboard's create form, as a dialog. Which fields appear depends on the active
- * provider: Hugging Face names a Space under your account, Railway needs a workspace.
+ * provider: Hugging Face names a Space under your account, Railway needs a workspace, and a
+ * codespace takes a bare name.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,7 +45,7 @@ fun CreateDeploymentDialog(
 ) {
     // Which account a space lands in is a decision you make while creating one, so it lives
     // here rather than taking permanent room on the Accounts page.
-    val deployable = state.account?.identities.orEmpty().filter { it.provider != "github" }
+    val deployable = state.account?.identities.orEmpty().filter { it.provider in DEPLOY_PROVIDERS }
     val provider = createTargetFor(state.account)
     // Prefilled rather than a placeholder: Material3 hides a placeholder behind the label
     // until the field is focused, so a suggestion you cannot see is no help at all.
@@ -221,6 +222,14 @@ internal fun buildRequest(
             val repoId = huggingFaceRepoId(account, name) ?: return null
             CruxCreateRequest.HuggingFace(
                 repoId = repoId,
+                password = cleanPassword,
+                templateId = template?.id,
+            )
+        }
+        "github" -> {
+            if (!isValidSpaceName(name)) return null
+            CruxCreateRequest.Codespace(
+                name = name.trim(),
                 password = cleanPassword,
                 templateId = template?.id,
             )

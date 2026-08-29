@@ -168,7 +168,7 @@ class CruxApi @Inject constructor(
     }
 }
 
-/** The create form, in the two shapes the API accepts. */
+/** The create form, in the three shapes the API accepts. */
 sealed interface CruxCreateRequest {
     val password: String?
     val templateId: String?
@@ -185,6 +185,16 @@ sealed interface CruxCreateRequest {
         override val password: String? = null,
         override val templateId: String? = null,
     ) : CruxCreateRequest
+
+    /**
+     * A codespace is created *from* the template repository, so unlike a Space there is no repo
+     * to name and unlike Railway there is no workspace to choose. The name only labels it.
+     */
+    data class Codespace(
+        val name: String,
+        override val password: String? = null,
+        override val templateId: String? = null,
+    ) : CruxCreateRequest
 }
 
 internal fun CruxCreateRequest.toJson(): JsonObject = buildJsonObject {
@@ -194,6 +204,7 @@ internal fun CruxCreateRequest.toJson(): JsonObject = buildJsonObject {
             put("name", JsonPrimitive(name))
             put("workspaceId", JsonPrimitive(workspaceId))
         }
+        is CruxCreateRequest.Codespace -> put("name", JsonPrimitive(name))
     }
     password?.takeIf { it.isNotBlank() }?.let { put("password", JsonPrimitive(it)) }
     templateId?.takeIf { it.isNotBlank() }?.let { put("templateId", JsonPrimitive(it)) }
