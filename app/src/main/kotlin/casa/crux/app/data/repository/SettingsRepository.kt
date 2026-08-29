@@ -620,8 +620,12 @@ class SettingsRepository @Inject constructor(
     /**
      * Whether to show local runtime controls on Home screen. Default: true.
      */
+    /**
+     * Off by default: running OpenCode on the phone through Termux is a niche setup, and the
+     * card for it otherwise greets everyone who has never installed Termux.
+     */
     val showLocalRuntime: Flow<Boolean> = dataStore.data.map { preferences ->
-        preferences[SHOW_LOCAL_RUNTIME_KEY] ?: true
+        preferences[SHOW_LOCAL_RUNTIME_KEY] ?: false
     }
 
     suspend fun setShowLocalRuntime(enabled: Boolean) {
@@ -859,7 +863,7 @@ class SettingsRepository @Inject constructor(
             imageAttachmentMaxLongSide = preferences[IMAGE_ATTACHMENT_MAX_LONG_SIDE_KEY] ?: 1440,
             imageAttachmentWebpQuality = preferences[IMAGE_ATTACHMENT_WEBP_QUALITY_KEY] ?: 60,
             terminalFontSize = preferences[TERMINAL_FONT_SIZE_KEY] ?: 13f,
-            showLocalRuntime = preferences[SHOW_LOCAL_RUNTIME_KEY] ?: true,
+            showLocalRuntime = preferences[SHOW_LOCAL_RUNTIME_KEY] ?: false,
             showTerminalPanelHint = preferences[SHOW_TERMINAL_PANEL_HINT_KEY] ?: true,
         )
     }

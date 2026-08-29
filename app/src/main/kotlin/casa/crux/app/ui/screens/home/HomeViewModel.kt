@@ -70,7 +70,8 @@ data class HomeUiState(
     val localRuntimeFixCommand: String? = null,
     val localRuntimeNeedsOverlaySettings: Boolean = false,
     val setupCommand: String? = null,
-    val showLocalRuntime: Boolean = true,
+    /** Matches the stored default, so the card cannot flash before the setting arrives. */
+    val showLocalRuntime: Boolean = false,
     val localProxyEnabled: Boolean = false,
     val localProxyUrl: String = "",
     val localProxyNoProxy: String = LocalServerManager.DEFAULT_NO_PROXY_LIST,
