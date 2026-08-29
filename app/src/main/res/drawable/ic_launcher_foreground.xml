@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The constellation Crux, the Southern Cross. Content is kept high in the 66dp
+     safe zone so the build-version stamp has clear space beneath it. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path android:fillColor="#2A2E3D8C" android:pathData="M43.6,16.0 a8.4,8.4 0 1,0 16.8,0 a8.4,8.4 0 1,0 -16.8,0 Z" />
+    <path android:fillColor="#2A2E3D8C" android:pathData="M60.44,37.0 a7.5600000000000005,7.5600000000000005 0 1,0 15.120000000000001,0 a7.5600000000000005,7.5600000000000005 0 1,0 -15.120000000000001,0 Z" />
+    <path android:fillColor="#2A2E3D8C" android:pathData="M44.08,52.0 a10.920000000000002,10.920000000000002 0 1,0 21.840000000000003,0 a10.920000000000002,10.920000000000002 0 1,0 -21.840000000000003,0 Z" />
+    <path android:strokeColor="#385C7FE0" android:strokeWidth="0.9"
+        android:pathData="M52.0,16.0 L55.0,52.0" />
+    <path android:strokeColor="#385C7FE0" android:strokeWidth="0.9"
+        android:pathData="M36.0,32.0 L68.0,37.0" />
+    <path android:fillColor="#FFEEF1FF" android:pathData="M48.0,16.0 a4.0,4.0 0 1,0 8.0,0 a4.0,4.0 0 1,0 -8.0,0 Z" />
+    <path android:fillColor="#FFEEF1FF" android:pathData="M33.0,32.0 a3.0,3.0 0 1,0 6.0,0 a3.0,3.0 0 1,0 -6.0,0 Z" />
+    <path android:fillColor="#FFEEF1FF" android:pathData="M64.4,37.0 a3.6,3.6 0 1,0 7.2,0 a3.6,3.6 0 1,0 -7.2,0 Z" />
+    <path android:fillColor="#FFEEF1FF" android:pathData="M49.8,52.0 a5.2,5.2 0 1,0 10.4,0 a5.2,5.2 0 1,0 -10.4,0 Z" />
+    <path android:fillColor="#FFEEF1FF" android:pathData="M46.2,41.0 a1.8,1.8 0 1,0 3.6,0 a1.8,1.8 0 1,0 -3.6,0 Z" />
+</vector>
