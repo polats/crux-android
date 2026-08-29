@@ -13,14 +13,14 @@ class UpdatePolicyTest {
             UpdateManifestDto(
                 versionName = "1.7.0",
                 versionCode = 23,
-                releaseUrl = "https://github.com/polats/crux/releases/tag/v1.7.0",
+                releaseUrl = "https://github.com/polats/crux-android/releases/tag/v1.7.0",
             ),
         )
 
-        assertEquals(AvailableUpdate("1.7.0", 23, "https://github.com/polats/crux/releases/tag/v1.7.0"), release)
+        assertEquals(AvailableUpdate("1.7.0", 23, "https://github.com/polats/crux-android/releases/tag/v1.7.0"), release)
         assertNull(
             UpdatePolicy.manifestToRelease(
-                UpdateManifestDto("1.7.0", 23, "https://github.com/polats/crux/releases/tag/v1.6.9"),
+                UpdateManifestDto("1.7.0", 23, "https://github.com/polats/crux-android/releases/tag/v1.6.9"),
             ),
         )
     }
@@ -28,9 +28,9 @@ class UpdatePolicyTest {
     @Test
     fun `github fallback requires exact tag and release URL`() {
         assertEquals(
-            AvailableUpdate("1.7.0", null, "https://github.com/polats/crux/releases/tag/v1.7.0"),
+            AvailableUpdate("1.7.0", null, "https://github.com/polats/crux-android/releases/tag/v1.7.0"),
             UpdatePolicy.githubToRelease(
-                GitHubReleaseDto("v1.7.0", "https://github.com/polats/crux/releases/tag/v1.7.0"),
+                GitHubReleaseDto("v1.7.0", "https://github.com/polats/crux-android/releases/tag/v1.7.0"),
             ),
         )
         assertNull(
@@ -42,16 +42,16 @@ class UpdatePolicyTest {
 
     @Test
     fun `version code takes precedence and github falls back to semver`() {
-        assertTrue(UpdatePolicy.isNewer(AvailableUpdate("1.0.0", 23, "https://github.com/polats/crux/releases/tag/v1.0.0"), 22, "9.0.0"))
-        assertFalse(UpdatePolicy.isNewer(AvailableUpdate("9.0.0", 22, "https://github.com/polats/crux/releases/tag/v9.0.0"), 22, "1.0.0"))
-        assertTrue(UpdatePolicy.isNewer(AvailableUpdate("1.7.0", null, "https://github.com/polats/crux/releases/tag/v1.7.0"), 22, "1.6.9"))
+        assertTrue(UpdatePolicy.isNewer(AvailableUpdate("1.0.0", 23, "https://github.com/polats/crux-android/releases/tag/v1.0.0"), 22, "9.0.0"))
+        assertFalse(UpdatePolicy.isNewer(AvailableUpdate("9.0.0", 22, "https://github.com/polats/crux-android/releases/tag/v9.0.0"), 22, "1.0.0"))
+        assertTrue(UpdatePolicy.isNewer(AvailableUpdate("1.7.0", null, "https://github.com/polats/crux-android/releases/tag/v1.7.0"), 22, "1.6.9"))
     }
 
     @Test
     fun `manifest requires a positive version code`() {
         assertNull(
             UpdatePolicy.manifestToRelease(
-                UpdateManifestDto("1.7.0", 0, "https://github.com/polats/crux/releases/tag/v1.7.0"),
+                UpdateManifestDto("1.7.0", 0, "https://github.com/polats/crux-android/releases/tag/v1.7.0"),
             ),
         )
     }
@@ -62,9 +62,9 @@ class UpdatePolicyTest {
             UpdateManifestDto(
                 versionName = "1.7.0",
                 versionCode = 23,
-                releaseUrl = "https://github.com/polats/crux/releases/tag/v1.7.0",
+                releaseUrl = "https://github.com/polats/crux-android/releases/tag/v1.7.0",
                 packageName = "casa.crux.app",
-                apkUrl = "https://github.com/polats/crux/releases/download/v1.7.0/crux-1.7.0.apk",
+                apkUrl = "https://github.com/polats/crux-android/releases/download/v1.7.0/crux-1.7.0.apk",
                 sha256 = "A".repeat(64),
             ),
         )
@@ -75,9 +75,9 @@ class UpdatePolicyTest {
             UpdatePolicy.manifestToRelease(
                 UpdateManifestDto(
                     "1.7.0", 23,
-                    "https://github.com/polats/crux/releases/tag/v1.7.0",
+                    "https://github.com/polats/crux-android/releases/tag/v1.7.0",
                     "casa.crux.app",
-                    "https://github.com/polats/crux/releases/download/v1.7.1/crux-1.7.0.apk",
+                    "https://github.com/polats/crux-android/releases/download/v1.7.1/crux-1.7.0.apk",
                     "a".repeat(64),
                 ),
             ),
@@ -87,14 +87,14 @@ class UpdatePolicyTest {
     @Test
     fun `manifest rejects partial or malformed rich metadata but accepts legacy`() {
         val legacy = UpdatePolicy.manifestToRelease(
-            UpdateManifestDto("1.7.0", 23, "https://github.com/polats/crux/releases/tag/v1.7.0"),
+            UpdateManifestDto("1.7.0", 23, "https://github.com/polats/crux-android/releases/tag/v1.7.0"),
         )
         assertTrue(legacy != null)
         assertFalse(legacy?.let(UpdatePolicy::isInstallable) ?: true)
         assertNull(
             UpdatePolicy.manifestToRelease(
                 UpdateManifestDto(
-                    "1.7.0", 23, "https://github.com/polats/crux/releases/tag/v1.7.0",
+                    "1.7.0", 23, "https://github.com/polats/crux-android/releases/tag/v1.7.0",
                     packageName = "casa.crux.app",
                 ),
             ),
@@ -102,9 +102,9 @@ class UpdatePolicyTest {
         assertNull(
             UpdatePolicy.manifestToRelease(
                 UpdateManifestDto(
-                    "1.7.0", 23, "https://github.com/polats/crux/releases/tag/v1.7.0",
+                    "1.7.0", 23, "https://github.com/polats/crux-android/releases/tag/v1.7.0",
                     "casa.crux.app",
-                    "https://github.com/polats/crux/releases/download/v1.7.0/crux-1.7.0.apk",
+                    "https://github.com/polats/crux-android/releases/download/v1.7.0/crux-1.7.0.apk",
                     "not-a-sha",
                 ),
             ),

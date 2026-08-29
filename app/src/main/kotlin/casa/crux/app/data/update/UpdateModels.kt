@@ -5,7 +5,7 @@ import kotlinx.serialization.Serializable
 
 private const val REPOSITORY_HOST = "github.com"
 private const val REPOSITORY_OWNER = "polats"
-private const val REPOSITORY_NAME = "crux"
+private const val REPOSITORY_NAME = "crux-android"
 private const val APPLICATION_ID = "casa.crux.app"
 
 @Serializable

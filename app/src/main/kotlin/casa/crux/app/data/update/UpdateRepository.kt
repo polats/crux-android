@@ -38,9 +38,9 @@ import java.security.MessageDigest
 import javax.inject.Inject
 import javax.inject.Singleton
 
-private const val RICH_UPDATE_MANIFEST_URL = "https://github.com/polats/crux/releases/latest/download/update.json"
-private const val UPDATE_MANIFEST_URL = "https://raw.githubusercontent.com/polats/crux/master/update.json"
-private const val GITHUB_LATEST_RELEASE_URL = "https://api.github.com/repos/polats/crux/releases/latest"
+private const val RICH_UPDATE_MANIFEST_URL = "https://github.com/polats/crux-android/releases/latest/download/update.json"
+private const val UPDATE_MANIFEST_URL = "https://raw.githubusercontent.com/polats/crux-android/master/update.json"
+private const val GITHUB_LATEST_RELEASE_URL = "https://api.github.com/repos/polats/crux-android/releases/latest"
 private const val CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000L
 private const val MAX_RESPONSE_BYTES = 64 * 1024L
 private const val MAX_MANIFEST_CHARS = 8 * 1024

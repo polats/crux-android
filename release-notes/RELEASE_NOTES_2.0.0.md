@@ -33,8 +33,8 @@ on the launcher icon for sideloaded builds.
   committable.
 - Added `scripts/device.py`, which stamps, builds, installs, launches and restores in one command.
 - Repointed in-app update discovery, update verification, and the Termux local-server setup script
-  at this repository. Update manifests and APKs are now resolved from `polats/crux`, and release
-  APKs are named `crux-<version>.apk`.
+  at this repository. Update manifests and APKs are now resolved from
+  `polats/crux-android`, and release APKs are named `crux-<version>.apk`.
 - Regenerated the Termux setup script checksum, which the script verifies against before running.
 - Recorded Crux's own trademark and branding policy, and its attribution as an independently
   maintained fork of OC Remote.

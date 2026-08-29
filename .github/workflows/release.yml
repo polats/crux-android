@@ -48,7 +48,7 @@ jobs:
           MANIFEST_VERSION=$(python3 -c 'import json; print(json.load(open("update.json"))["versionName"])')
           MANIFEST_CODE=$(python3 -c 'import json; print(json.load(open("update.json"))["versionCode"])')
           MANIFEST_URL=$(python3 -c 'import json; print(json.load(open("update.json"))["releaseUrl"])')
-          EXPECTED_URL="https://github.com/polats/crux/releases/tag/v${{ steps.version.outputs.name }}"
+          EXPECTED_URL="https://github.com/polats/crux-android/releases/tag/v${{ steps.version.outputs.name }}"
           test "$MANIFEST_VERSION" = "${{ steps.version.outputs.name }}" || { echo "::error::update.json versionName mismatch"; exit 1; }
           test "$MANIFEST_CODE" = "${{ steps.version.outputs.code }}" || { echo "::error::update.json versionCode mismatch"; exit 1; }
           test "$MANIFEST_URL" = "$EXPECTED_URL" || { echo "::error::update.json releaseUrl mismatch"; exit 1; }
@@ -112,9 +112,9 @@ jobs:
           manifest = {
               "versionName": version,
               "versionCode": int(os.environ["VERSION_CODE"]),
-              "releaseUrl": f"https://github.com/polats/crux/releases/tag/v{version}",
+              "releaseUrl": f"https://github.com/polats/crux-android/releases/tag/v{version}",
               "packageName": "casa.crux.app",
-              "apkUrl": f"https://github.com/polats/crux/releases/download/v{version}/crux-{version}.apk",
+              "apkUrl": f"https://github.com/polats/crux-android/releases/download/v{version}/crux-{version}.apk",
               "sha256": os.environ["SHA256"],
           }
           with open("release-metadata/update.json", "w", encoding="utf-8") as output:
