@@ -174,32 +174,6 @@ class DeploymentsLogicTest {
         )
 
     @Test
-    fun `only unlinked configured providers can be connected`() {
-        // GitHub already linked, so offering to "connect GitHub" again is meaningless.
-        assertEquals(
-            listOf("railway"),
-            linkableProviders(accountWith("huggingface", "github", configured = listOf("huggingface", "railway", "github")))
-        )
-        assertTrue(linkableProviders(accountWith("huggingface", "railway", "github")).isEmpty())
-        assertTrue(linkableProviders(null).isEmpty())
-    }
-
-    @Test
-    fun `github is never a deploy target`() {
-        assertEquals(listOf("huggingface"), deployableIdentities(accountWith("huggingface", "github")).map { it.provider })
-        assertTrue(deployableIdentities(accountWith("github")).isEmpty())
-    }
-
-    @Test
-    fun `the deploy selector appears only when there is a choice`() {
-        assertFalse(showsDeployTarget(accountWith("huggingface")))
-        // GitHub does not count towards having a choice.
-        assertFalse(showsDeployTarget(accountWith("huggingface", "github")))
-        assertTrue(showsDeployTarget(accountWith("huggingface", "railway")))
-        assertFalse(showsDeployTarget(null))
-    }
-
-    @Test
     fun `an account-changing login is explained rather than silent`() {
         assertTrue(outcomeNotice("switch")!!.isNotBlank())
         assertTrue(outcomeNotice("absorb")!!.contains("Nothing was lost"))

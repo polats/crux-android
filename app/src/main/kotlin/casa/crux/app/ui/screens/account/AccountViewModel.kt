@@ -4,6 +4,8 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import casa.crux.app.data.crux.CruxAccount
+import casa.crux.app.R
+import casa.crux.app.data.crux.CruxDeploymentStatus
 import casa.crux.app.data.crux.CruxIntent
 import casa.crux.app.data.crux.CruxRepository
 import casa.crux.app.data.crux.CruxSignInEvent
@@ -27,6 +29,17 @@ data class AccountUiState(
     val busy: Boolean = false,
     val error: String? = null,
     val notice: String? = null,
+    /** How many spaces each provider account still owns; blocks disconnecting it. */
+    val spacesByProvider: Map<String, Int> = emptyMap(),
+)
+
+/** One provider, as the screen draws it. */
+data class AccountRow(
+    val provider: String,
+    val connected: Boolean,
+    val username: String?,
+    /** Non-null when disconnecting is refused, and why. */
+    val blockedReason: Int?,
 )
 
 /**
@@ -55,6 +68,7 @@ class AccountViewModel @Inject constructor(
                 // Only reach the network once we know we have a token, and only to
                 // revalidate what is already on screen.
                 if (signedIn == true && account == null) revalidate()
+                if (signedIn == true) countSpaces()
             }
         }
         viewModelScope.launch {
@@ -83,11 +97,24 @@ class AccountViewModel @Inject constructor(
         }
     }
 
-    fun signIn(provider: String) = start(provider, CruxIntent.SIGN_IN)
+    /**
+     * Signs in when nothing is linked yet, and links onto the existing account after that.
+     * The distinction is the server's to enforce, so the button does not have to explain it.
+     */
+    fun connect(provider: String) =
+        start(provider, if (uiState.value.signedIn == true) CruxIntent.LINK else CruxIntent.SIGN_IN)
 
-    fun linkProvider(provider: String) = start(provider, CruxIntent.LINK)
-
-    fun switchAccount(provider: String) = start(provider, CruxIntent.SWITCH)
+    fun disconnect(provider: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(busy = true, error = null, notice = null) }
+            try {
+                repository.unlinkProvider(provider)
+                _uiState.update { it.copy(busy = false) }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(busy = false, error = e.message ?: "Could not disconnect") }
+            }
+        }
+    }
 
     private fun start(provider: String, intent: CruxIntent) {
         viewModelScope.launch {
@@ -112,15 +139,15 @@ class AccountViewModel @Inject constructor(
         }
     }
 
-    fun unlinkGithub() {
+    /** Counts spaces per provider so the row can disable a disconnect the server would refuse. */
+    private fun countSpaces() {
         viewModelScope.launch {
-            _uiState.update { it.copy(busy = true, error = null) }
-            try {
-                repository.unlinkGithub()
-                _uiState.update { it.copy(busy = false) }
-            } catch (e: Exception) {
-                _uiState.update { it.copy(busy = false, error = e.message ?: "Could not disconnect GitHub") }
-            }
+            val counts = runCatching { repository.deployments() }.getOrNull()
+                ?.filter { it.status != CruxDeploymentStatus.DELETED }
+                ?.groupingBy { it.provider }
+                ?.eachCount()
+                ?: return@launch
+            _uiState.update { it.copy(spacesByProvider = counts) }
         }
     }
 
@@ -150,3 +177,39 @@ internal fun outcomeNotice(outcome: String?): String? = when (outcome) {
     "link" -> "Linked to the account you are signed in with."
     else -> null
 }
+
+/**
+ * One row per provider the server offers, in a fixed order so the list never reshuffles.
+ *
+ * A disconnect is refused for two reasons, and both are decided here rather than discovered
+ * by tapping: the last remaining account cannot go, because that would leave you unable to
+ * sign in at all; and one still holding spaces cannot go, because unlinking deletes the
+ * credential Crux needs to manage or even delete them.
+ */
+internal fun accountRows(
+    account: CruxAccount?,
+    spacesByProvider: Map<String, Int> = emptyMap(),
+): List<AccountRow> {
+    val offered = configuredProviders(account).ifEmpty { LOGIN_PROVIDERS }
+    val linked = account?.identities.orEmpty().associateBy { it.provider }
+    return offered.map { provider ->
+        val identity = linked[provider]
+        AccountRow(
+            provider = provider,
+            connected = identity != null,
+            username = identity?.username,
+            blockedReason = when {
+                identity == null -> null
+                linked.size <= 1 -> R.string.deployments_account_blocked_last
+                (spacesByProvider[provider] ?: 0) > 0 -> R.string.deployments_account_blocked_spaces
+                else -> null
+            },
+        )
+    }
+}
+
+/** Providers the server has configured, in a stable order. */
+internal fun configuredProviders(account: CruxAccount?): List<String> =
+    LOGIN_PROVIDERS.filter { account?.providers?.get(it) == true }
+
+internal val LOGIN_PROVIDERS = listOf("huggingface", "railway", "github")

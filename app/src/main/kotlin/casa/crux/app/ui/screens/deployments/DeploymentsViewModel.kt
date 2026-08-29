@@ -9,6 +9,7 @@ import casa.crux.app.data.crux.CruxDeployment
 import casa.crux.app.data.crux.CruxDeploymentStatus
 import casa.crux.app.data.crux.CruxIdentity
 import casa.crux.app.data.crux.CruxIntent
+import casa.crux.app.ui.screens.account.configuredProviders
 import casa.crux.app.data.crux.CruxRepository
 import casa.crux.app.data.crux.CruxTemplate
 import casa.crux.app.data.crux.CruxUnauthorizedException
@@ -131,6 +132,18 @@ class DeploymentsViewModel @Inject constructor(
         }
     }
 
+    /** Moves where new spaces are created; the list itself already spans every account. */
+    fun switchDeployTarget(provider: String) {
+        viewModelScope.launch {
+            try {
+                repository.switchProvider(provider)
+                refresh()
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = e.message ?: "Could not switch account") }
+            }
+        }
+    }
+
     fun showCreateDialog(show: Boolean) = _uiState.update { it.copy(showCreateDialog = show, error = null) }
 
     fun create(request: CruxCreateRequest) {
@@ -247,29 +260,6 @@ internal fun orderDeployments(deployments: List<CruxDeployment>): List<CruxDeplo
         compareByDescending<CruxDeployment> { it.status.isPending }
             .thenByDescending { it.createdAt ?: "" }
     )
-
-/** Identities that can actually hold a deployment; GitHub signs you in but cannot host. */
-internal fun deployableIdentities(account: CruxAccount?): List<CruxIdentity> =
-    account?.identities.orEmpty().filter { it.provider != "github" }
-
-/** The deploy-target selector only earns its place when there is a choice to make. */
-internal fun showsDeployTarget(account: CruxAccount?): Boolean =
-    deployableIdentities(account).size >= 2
-
-/**
- * Providers worth offering to link: configured on the server, and not already linked. The
- * app used to offer all three unconditionally, so "link" and "sign in" looked identical.
- */
-internal fun linkableProviders(account: CruxAccount?): List<String> {
-    val linked = account?.identities.orEmpty().map { it.provider }.toSet()
-    return configuredProviders(account).filterNot { it in linked }
-}
-
-/** The configured providers, in a stable order the UI can render directly. */
-internal fun configuredProviders(account: CruxAccount?): List<String> =
-    LOGIN_PROVIDERS.filter { account?.providers?.get(it) == true }
-
-internal val LOGIN_PROVIDERS = listOf("huggingface", "railway", "github")
 
 internal fun statusLabel(status: CruxDeploymentStatus): String = when (status) {
     CruxDeploymentStatus.QUEUED -> "Queued"

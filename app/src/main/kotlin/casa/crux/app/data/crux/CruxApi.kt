@@ -89,8 +89,9 @@ class CruxApi @Inject constructor(
             ?: throw CruxApiException("The server did not return a link ticket")
     }
 
-    suspend fun unlinkGithub(token: String) {
-        client.delete(url("/api/github")) { bearer(token) }.decodeOrThrow()
+    /** Refused by the server when the account owns spaces, or is the last one linked. */
+    suspend fun unlinkProvider(token: String, provider: String) {
+        client.delete(url("/api/identities?provider=$provider")) { bearer(token) }.decodeOrThrow()
     }
 
     suspend fun exchangeCode(code: String, verifier: String, deviceLabel: String): CruxTokenResponse {

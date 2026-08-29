@@ -154,8 +154,8 @@ class CruxRepository @Inject constructor(
         if (_signedIn.value != false) clearSession()
     }
 
-    suspend fun unlinkGithub() {
-        api.unlinkGithub(requireToken())
+    suspend fun unlinkProvider(provider: String) {
+        api.unlinkProvider(requireToken(), provider)
         refreshAccount()
     }
 

@@ -26,6 +26,7 @@ import casa.crux.app.data.crux.CruxTemplate
 import casa.crux.app.data.crux.CruxWorkspace
 import casa.crux.app.ui.components.AppDialog
 import casa.crux.app.ui.components.AppDialogActions
+import casa.crux.app.ui.screens.account.providerLabel
 
 /**
  * The web dashboard's create form, as a dialog. Which fields appear depends on the active
@@ -37,7 +38,11 @@ fun CreateDeploymentDialog(
     state: DeploymentsUiState,
     onDismiss: () -> Unit,
     onCreate: (CruxCreateRequest) -> Unit,
+    onSwitchTarget: (String) -> Unit = {},
 ) {
+    // Which account a space lands in is a decision you make while creating one, so it lives
+    // here rather than taking permanent room on the Accounts page.
+    val deployable = state.account?.identities.orEmpty().filter { it.provider != "github" }
     val provider = createTargetFor(state.account)
     var name by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -66,6 +71,17 @@ fun CreateDeploymentDialog(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             } else {
+                if (deployable.size >= 2) {
+                    Picker(
+                        label = stringResource(R.string.deployments_field_create_in),
+                        selected = deployable.firstOrNull { it.provider == provider }
+                            ?.let { "${providerLabel(it.provider)} — ${it.username}" }
+                            .orEmpty(),
+                        options = deployable.map { "${providerLabel(it.provider)} — ${it.username}" },
+                        onSelect = { index -> deployable.getOrNull(index)?.let { onSwitchTarget(it.provider) } },
+                    )
+                }
+
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },

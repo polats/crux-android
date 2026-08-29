@@ -63,6 +63,7 @@ import kotlinx.coroutines.flow.SharedFlow
 fun DeploymentsScreen(
     onNavigateBack: () -> Unit,
     onServerConnected: (String) -> Unit,
+    onNavigateToAccount: () -> Unit = {},
     viewModel: DeploymentsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -111,9 +112,7 @@ fun DeploymentsScreen(
                     CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                 }
                 !state.signedIn -> SignedOut(
-                    error = state.error,
-                    providers = state.availableProviders,
-                    onSignIn = viewModel::signIn,
+                    onSignIn = onNavigateToAccount,
                     modifier = Modifier.align(Alignment.Center),
                 )
                 else -> DeploymentList(
@@ -133,15 +132,14 @@ fun DeploymentsScreen(
             state = state,
             onDismiss = { viewModel.showCreateDialog(false) },
             onCreate = viewModel::create,
+            onSwitchTarget = viewModel::switchDeployTarget,
         )
     }
 }
 
 @Composable
 private fun SignedOut(
-    error: String?,
-    providers: List<String>,
-    onSignIn: (String) -> Unit,
+    onSignIn: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -156,28 +154,8 @@ private fun SignedOut(
             tint = MaterialTheme.colorScheme.primary,
         )
         Text(stringResource(R.string.deployments_signed_out_title), style = MaterialTheme.typography.titleMedium)
-        Text(
-            stringResource(R.string.deployments_signed_out_body),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        error?.let {
-            Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
-        }
-        // Only what the server has configured: offering a provider it cannot complete
-        // sends you to a browser that fails at the end.
-        val offered = providers.ifEmpty { LOGIN_PROVIDERS }
-        offered.forEachIndexed { index, provider ->
-            val label = when (provider) {
-                "huggingface" -> stringResource(R.string.deployments_sign_in_hugging_face)
-                "railway" -> stringResource(R.string.deployments_sign_in_railway)
-                else -> stringResource(R.string.deployments_sign_in_github)
-            }
-            if (index == 0) {
-                AppPrimaryButton(onClick = { onSignIn(provider) }) { Text(label) }
-            } else {
-                AppSecondaryButton(onClick = { onSignIn(provider) }) { Text(label) }
-            }
+        AppPrimaryButton(onClick = onSignIn) {
+            Text(stringResource(R.string.deployments_signed_out_action))
         }
     }
 }
@@ -201,19 +179,6 @@ private fun DeploymentList(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            state.account?.activeIdentity?.let { identity ->
-                item(key = "account") {
-                    Text(
-                        stringResource(
-                            R.string.deployments_account,
-                            identity.username ?: identity.provider,
-                            identity.provider,
-                        ),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
             state.notice?.let { message ->
                 item(key = "notice") {
                     Text(

@@ -1,6 +1,6 @@
 package casa.crux.app.data.crux
 
-import casa.crux.app.ui.screens.deployments.configuredProviders
+import casa.crux.app.ui.screens.account.configuredProviders
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull

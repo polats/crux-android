@@ -568,6 +568,7 @@ fun NavGraph(
         composable(Screen.Deployments.route) {
             DeploymentsScreen(
                 onNavigateBack = { navController.popBackStack() },
+                onNavigateToAccount = { navController.navigate(Screen.Account.route) },
                 onServerConnected = {
                     // A connected deployment is an ordinary server from here on, so drop
                     // back to the list that already knows how to open one.

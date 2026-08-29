@@ -772,6 +772,7 @@ Tokens: ~%4$d -&gt; ~%5$d</string>
     <string name="deployments_field_name">Name</string>
     <string name="deployments_field_name_hint">Letters, numbers and hyphens</string>
     <string name="deployments_field_name_invalid">Use only letters, numbers and hyphens</string>
+    <string name="deployments_field_create_in">Create in</string>
     <string name="deployments_field_workspace">Railway workspace</string>
     <string name="deployments_field_workspace_none">Select a workspace</string>
     <string name="deployments_field_template">Template</string>
@@ -780,13 +781,11 @@ Tokens: ~%4$d -&gt; ~%5$d</string>
     <string name="deployments_field_password_hint">Leave empty and one is generated for you</string>
     <string name="deployments_account_title">Accounts</string>
     <string name="deployments_account_open">Accounts</string>
-    <string name="deployments_account_deploy_into">Create spaces in</string>
-    <string name="deployments_account_github">GitHub: %1$s</string>
     <string name="deployments_account_disconnect">Disconnect</string>
-    <string name="deployments_account_link_title">Connect another account</string>
-    <string name="deployments_account_link">Connect %1$s</string>
-    <string name="deployments_account_switch_hint">Signing out here does not sign you out of the provider, so use these to pick a different account with it.</string>
-    <string name="deployments_account_switch">Sign in as someone else with %1$s</string>
+    <string name="deployments_account_connect">Connect</string>
+    <string name="deployments_signed_out_action">Sign in</string>
+    <string name="deployments_account_blocked_last">Your only account. Sign out instead.</string>
+    <string name="deployments_account_blocked_spaces">Delete this account\'s spaces first</string>
     <string name="deployments_account_sign_in">Sign in with %1$s</string>
     <string name="settings_about_desc">Version, updates, links and licence</string>
     <string name="deployments_account_stale">Your %1$s access expired. Sign in again to continue.</string>
