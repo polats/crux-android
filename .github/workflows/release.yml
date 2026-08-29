@@ -16,6 +16,11 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4.1.0
+        with:
+          # Tags are needed by the release step, which refuses to move an existing tag onto
+          # different code. Without them a manual run cannot see a tag that is already pushed
+          # and tries to create it again.
+          fetch-depth: 0
 
       - name: Extract version from build.gradle.kts
         id: version
@@ -136,6 +141,9 @@ jobs:
               exit 1
             }
           else
+            # An annotated tag needs an author, and the runner has no git identity.
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git tag -a "$TAG" -m "$TAG"
             git push origin "$TAG"
           fi
