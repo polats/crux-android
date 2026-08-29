@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">OC Remote</string>
+    <string name="app_name">Crux</string>
     <!-- Home Screen -->
-    <string name="home_title">OC Remote</string>
+    <string name="home_title">Crux</string>
     <string name="home_add_server">Добавить сервер</string>
     <string name="home_no_servers">Серверы не настроены</string>
     <string name="home_server_health_good">Подключено</string>
@@ -87,7 +87,7 @@
     <string name="notification_connected">Подключено к %1$s</string>
     <string name="notification_connecting">Подключение к %1$s…</string>
     <string name="notification_connected_count">Подключено к %1$d из %2$d серверов</string>
-    <string name="notification_inbox_title">OC Remote — %1$d/%2$d подключено</string>
+    <string name="notification_inbox_title">Crux — %1$d/%2$d подключено</string>
     <string name="notification_status_connected">Подключено</string>
     <string name="notification_status_connecting">Подключение…</string>
     <string name="notification_response_ready">Ответ готов</string>
@@ -328,7 +328,7 @@
     <string name="about_description">Android-клиент для серверов OpenCode</string>
     <string name="about_unofficial">Это неофициальный проект сообщества, не связан с командой OpenCode.</string>
     <string name="about_github">GitHub</string>
-    <string name="about_github_url">https://github.com/crim50n/oc-remote</string>
+    <string name="about_github_url">https://github.com/polats/crux</string>
     <string name="about_opencode">OpenCode</string>
     <string name="about_opencode_url">https://github.com/anomalyco/opencode</string>
     <string name="about_license">Лицензия</string>
@@ -450,7 +450,7 @@
     <string name="home_local_server_password_placeholder">Оставьте пустым, чтобы отключить аутентификацию</string>
     <string name="home_local_lan_password_warning">Доступ по локальной сети разрешён без пароля. Любой пользователь вашей сети может открыть этот сервер.</string>
     <string name="home_local_auto_start_label">Автоматически запускать локальный сервер при запуске приложения</string>
-    <string name="home_local_auto_start_desc">Автоматически запускать локальное окружение при открытии OC Remote</string>
+    <string name="home_local_auto_start_desc">Автоматически запускать локальное окружение при открытии Crux</string>
     <string name="home_local_startup_timeout_label">Таймаут запуска</string>
     <string name="home_local_startup_timeout_value">%1$d сек</string>
     <string name="home_local_launch_options_title">Параметры запуска</string>
@@ -629,7 +629,7 @@
     <string name="sync_gist_id_desc">Оставьте пустым, чтобы создать приватный Gist</string>
     <string name="sync_github_token">Токен GitHub</string>
     <string name="sync_webdav_url">URL файла WebDAV</string>
-    <string name="sync_webdav_url_desc">Полный URL файла OCRemote.json</string>
+    <string name="sync_webdav_url_desc">Полный URL файла Crux.json</string>
     <string name="sync_username">Имя пользователя</string>
     <string name="sync_webdav_password">Пароль WebDAV</string>
     <string name="sync_credential_saved_hint">Оставьте пустым, чтобы сохранить текущее защищённое значение</string>
@@ -694,7 +694,7 @@
     <string name="settings_terminal_panel_hint">Подсказка по панели терминала</string>
     <string name="settings_terminal_panel_hint_desc">Показывать инструкцию по открытию панели при каждом запуске приложения</string>
     <string name="sync_backend_document">Файл</string>
-    <string name="sync_document_desc">Выберите файл OCRemote.json из Google Диска или любого другого приложения через системный файловый менеджер.</string>
+    <string name="sync_document_desc">Выберите файл Crux.json из Google Диска или любого другого приложения через системный файловый менеджер.</string>
     <string name="sync_document_choose">Выбрать файл</string>
     <string name="sync_document_create">Создать файл</string>
     <string name="sync_document_selected">Выбран файл синхронизации</string>

@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">OC Remote</string>
+    <string name="app_name">Crux</string>
     <!-- Home Screen -->
-    <string name="home_title">OC Remote</string>
+    <string name="home_title">Crux</string>
     <string name="home_add_server">サーバー追加</string>
     <string name="home_no_servers">サーバーが設定されていません</string>
     <string name="home_server_health_good">接続済み</string>
@@ -284,7 +284,7 @@
     <string name="notification_channel_permissions_desc">OpenCodeが権限を必要とする際の通知</string>
     <string name="notification_connecting">%1$sに接続中…</string>
     <string name="notification_connected_count">%1$d台中%2$d台に接続済み</string>
-    <string name="notification_inbox_title">OC Remote — %1$d/%2$d 接続済み</string>
+    <string name="notification_inbox_title">Crux — %1$d/%2$d 接続済み</string>
     <string name="notification_status_connected">接続済み</string>
     <string name="notification_status_connecting">接続中…</string>
     <string name="notification_response_ready">応答準備完了</string>
@@ -307,7 +307,7 @@
     <string name="about_description">OpenCodeサーバー用Androidクライアント</string>
     <string name="about_unofficial">これはOpenCodeチーム非公式のコミュニティプロジェクトです。</string>
     <string name="about_github">GitHub</string>
-    <string name="about_github_url">https://github.com/crim50n/oc-remote</string>
+    <string name="about_github_url">https://github.com/polats/crux</string>
     <string name="about_opencode">OpenCode</string>
     <string name="about_opencode_url">https://github.com/anomalyco/opencode</string>
     <string name="about_license">ライセンス</string>
@@ -449,7 +449,7 @@
     <string name="home_local_server_password_placeholder">認証を無効にする場合は空欄にしてください</string>
     <string name="home_local_lan_password_warning">パスワードなしでLANアクセスが有効です。ネットワーク上の誰でもこのサーバーを開くことができます。</string>
     <string name="home_local_auto_start_label">アプリ起動時にローカルサーバーを自動起動</string>
-    <string name="home_local_auto_start_desc">OC Remoteが開かれたときにローカルランタイムを自動起動</string>
+    <string name="home_local_auto_start_desc">Cruxが開かれたときにローカルランタイムを自動起動</string>
     <string name="home_local_startup_timeout_label">起動タイムアウト</string>
     <string name="home_local_startup_timeout_value">%1$d 秒</string>
     <string name="home_local_launch_options_title">起動オプション</string>
@@ -628,7 +628,7 @@
     <string name="sync_gist_id_desc">空欄の場合はプライベート Gist を作成します</string>
     <string name="sync_github_token">GitHub トークン</string>
     <string name="sync_webdav_url">WebDAV ファイル URL</string>
-    <string name="sync_webdav_url_desc">OCRemote.json ファイルの完全な URL</string>
+    <string name="sync_webdav_url_desc">Crux.json ファイルの完全な URL</string>
     <string name="sync_username">ユーザー名</string>
     <string name="sync_webdav_password">WebDAV パスワード</string>
     <string name="sync_credential_saved_hint">空欄のままにすると安全に保存された値が保持されます</string>
@@ -693,7 +693,7 @@
     <string name="settings_terminal_panel_hint">ターミナルパネルのヒント</string>
     <string name="settings_terminal_panel_hint_desc">アプリ起動時に毎回パネルの開き方を案内する</string>
     <string name="sync_backend_document">ファイル</string>
-    <string name="sync_document_desc">Google ドライブまたはシステムのファイルピッカーで利用可能な他のアプリから OCRemote.json ファイルを選択してください。</string>
+    <string name="sync_document_desc">Google ドライブまたはシステムのファイルピッカーで利用可能な他のアプリから Crux.json ファイルを選択してください。</string>
     <string name="sync_document_choose">ファイルを選択</string>
     <string name="sync_document_create">ファイルを作成</string>
     <string name="sync_document_selected">選択中の同期ファイル</string>

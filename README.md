@@ -1,10 +1,15 @@
-# OC Remote
+# Crux
 
 Android client for [OpenCode](https://github.com/anomalyco/opencode) servers with a native UI and broad feature coverage.
 
-**This is an unofficial community project, not affiliated with the OpenCode team.**
+**Crux is an independently maintained fork of [OC Remote](https://github.com/crim50n/oc-remote)**, and is
+not affiliated with or endorsed by the OC Remote project or its author. It is also an unofficial
+community project, not affiliated with the OpenCode team.
 
-## Why OC Remote
+Crux is the mobile half of [crux.casa](https://github.com/polats/crux.casa), a control plane that
+provisions hosted OpenCode servers. Any OpenCode server works — crux.casa is not required.
+
+## Why Crux
 
 - **Work from anywhere** — use OpenCode through a mobile-first native chat or a full interactive terminal
 - **Stay connected** — manage multiple remote servers or run OpenCode directly on-device through Termux
@@ -158,18 +163,28 @@ opencode serve --port 4096 --hostname 0.0.0.0
 
 # Install on connected device
 adb install -r app/build/outputs/apk/debug/app-debug.apk
+
+# Or: stamp the version onto the launcher icon, build, install and launch in one step
+python3 scripts/device.py
 ```
+
+`scripts/device.py` burns the version into the launcher icons before the build and restores them
+afterwards, so the home screen shows which build is on the phone without opening the app, and the
+working tree stays clean. `python3 scripts/stamp-icon.py --restore` undoes a stamp left behind by
+an interrupted build.
 
 ## Trademark and branding
 
 The software license applies to the source code.
 
-“OC Remote”, the OC Remote logo, application icon and other project
-branding are not licensed for use as the identity of derivative
-applications. Forks must use a clearly distinct name and visual identity.
+“Crux”, the Crux logo, application icon and other project branding are not
+licensed for use as the identity of derivative applications. Forks must use a
+clearly distinct name and visual identity — the same condition under which Crux
+itself forked from OC Remote.
 
 See [TRADEMARKS.md](TRADEMARKS.md).
 
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE). Copyright is retained by the original OC Remote
+author for the code inherited from that project.

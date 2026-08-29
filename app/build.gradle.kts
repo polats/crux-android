@@ -11,11 +11,11 @@ plugins {
 }
 
 android {
-    namespace = "dev.minios.ocremote"
+    namespace = "casa.crux.app"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "dev.minios.ocremote"
+        applicationId = "casa.crux.app"
         minSdk = 26
         targetSdk = 34
         versionCode = 26
@@ -47,7 +47,7 @@ android {
     buildTypes {
         debug {
             applicationIdSuffix = ".debug"
-            manifestPlaceholders["appLabel"] = "OC Remote Dev"
+            manifestPlaceholders["appLabel"] = "Crux Dev"
         }
         release {
             manifestPlaceholders["appLabel"] = "@string/app_name"

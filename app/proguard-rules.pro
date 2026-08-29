@@ -12,11 +12,11 @@
     kotlinx.serialization.KSerializer serializer(...);
 }
 
--keep,includedescriptorclasses class dev.minios.ocremote.**$$serializer { *; }
--keepclassmembers class dev.minios.ocremote.** {
+-keep,includedescriptorclasses class casa.crux.app.**$$serializer { *; }
+-keepclassmembers class casa.crux.app.** {
     *** Companion;
 }
--keepclasseswithmembers class dev.minios.ocremote.** {
+-keepclasseswithmembers class casa.crux.app.** {
     kotlinx.serialization.KSerializer serializer(...);
 }
 

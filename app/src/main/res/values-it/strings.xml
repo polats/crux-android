@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">OC Remote</string>
+    <string name="app_name">Crux</string>
     <!-- Home Screen -->
-    <string name="home_title">OC Remote</string>
+    <string name="home_title">Crux</string>
     <string name="home_add_server">Aggiungi server</string>
     <string name="home_no_servers">Nessun server configurato</string>
     <string name="home_server_health_good">Connesso</string>
@@ -284,7 +284,7 @@
     <string name="notification_channel_permissions_desc">Notifiche quando OpenCode richiede permessi</string>
     <string name="notification_connecting">Connessione a %1$s…</string>
     <string name="notification_connected_count">Connesso a %1$d di %2$d server</string>
-    <string name="notification_inbox_title">OC Remote — %1$d/%2$d connessi</string>
+    <string name="notification_inbox_title">Crux — %1$d/%2$d connessi</string>
     <string name="notification_status_connected">Connesso</string>
     <string name="notification_status_connecting">Connessione…</string>
     <string name="notification_response_ready">Risposta pronta</string>
@@ -307,7 +307,7 @@
     <string name="about_description">Client Android per server OpenCode</string>
     <string name="about_unofficial">Questo è un progetto della community non ufficiale, non affiliato al team OpenCode.</string>
     <string name="about_github">GitHub</string>
-    <string name="about_github_url">https://github.com/crim50n/oc-remote</string>
+    <string name="about_github_url">https://github.com/polats/crux</string>
     <string name="about_opencode">OpenCode</string>
     <string name="about_opencode_url">https://github.com/anomalyco/opencode</string>
     <string name="about_license">Licenza</string>
@@ -449,7 +449,7 @@ Token: ~%4$d -&gt; ~%5$d</string>
     <string name="home_local_server_password_placeholder">Lascia vuoto per disabilitare l\'autenticazione</string>
     <string name="home_local_lan_password_warning">L\'accesso LAN è abilitato senza password. Chiunque sulla tua rete può aprire questo server.</string>
     <string name="home_local_auto_start_label">Avvia automaticamente il server locale all\'apertura dell\'app</string>
-    <string name="home_local_auto_start_desc">Avvia il runtime locale automaticamente quando OC Remote si apre</string>
+    <string name="home_local_auto_start_desc">Avvia il runtime locale automaticamente quando Crux si apre</string>
     <string name="home_local_startup_timeout_label">Timeout di avvio</string>
     <string name="home_local_startup_timeout_value">%1$d sec</string>
     <string name="home_local_launch_options_title">Opzioni di avvio</string>
@@ -628,7 +628,7 @@ Token: ~%4$d -&gt; ~%5$d</string>
     <string name="sync_gist_id_desc">Lascia vuoto per creare un Gist privato</string>
     <string name="sync_github_token">Token GitHub</string>
     <string name="sync_webdav_url">URL file WebDAV</string>
-    <string name="sync_webdav_url_desc">URL completo del file OCRemote.json</string>
+    <string name="sync_webdav_url_desc">URL completo del file Crux.json</string>
     <string name="sync_username">Nome utente</string>
     <string name="sync_webdav_password">Password WebDAV</string>
     <string name="sync_credential_saved_hint">Lascia vuoto per mantenere il valore salvato in modo sicuro</string>
@@ -693,7 +693,7 @@ Token: ~%4$d -&gt; ~%5$d</string>
     <string name="settings_terminal_panel_hint">Suggerimento pannello terminale</string>
     <string name="settings_terminal_panel_hint_desc">Mostra le istruzioni per aprire il pannello una volta ogni avvio dell\'app</string>
     <string name="sync_backend_document">File</string>
-    <string name="sync_document_desc">Scegli un file OCRemote.json da Google Drive o da un\'altra app disponibile nel selettore file di sistema.</string>
+    <string name="sync_document_desc">Scegli un file Crux.json da Google Drive o da un\'altra app disponibile nel selettore file di sistema.</string>
     <string name="sync_document_choose">Scegli file</string>
     <string name="sync_document_create">Crea file</string>
     <string name="sync_document_selected">File di sincronizzazione selezionato</string>

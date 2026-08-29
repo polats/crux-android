@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">OC Remote</string>
+    <string name="app_name">Crux</string>
     <!-- Home Screen -->
-    <string name="home_title">OC Remote</string>
+    <string name="home_title">Crux</string>
     <string name="home_add_server">添加服务器</string>
     <string name="home_no_servers">未配置服务器</string>
     <string name="home_server_health_good">已连接</string>
@@ -284,7 +284,7 @@
     <string name="notification_channel_permissions_desc">OpenCode 需要权限时通知</string>
     <string name="notification_connecting">正在连接 %1$s…</string>
     <string name="notification_connected_count">已连接 %1$d/%2$d 个服务器</string>
-    <string name="notification_inbox_title">OC Remote — 已连接 %1$d/%2$d</string>
+    <string name="notification_inbox_title">Crux — 已连接 %1$d/%2$d</string>
     <string name="notification_status_connected">已连接</string>
     <string name="notification_status_connecting">正在连接…</string>
     <string name="notification_response_ready">回复已准备好</string>
@@ -307,7 +307,7 @@
     <string name="about_description">OpenCode 服务器 Android 客户端</string>
     <string name="about_unofficial">这是一个非官方社区项目，与 OpenCode 团队无关。</string>
     <string name="about_github">GitHub</string>
-    <string name="about_github_url">https://github.com/crim50n/oc-remote</string>
+    <string name="about_github_url">https://github.com/polats/crux</string>
     <string name="about_opencode">OpenCode</string>
     <string name="about_opencode_url">https://github.com/anomalyco/opencode</string>
     <string name="about_license">许可证</string>
@@ -449,7 +449,7 @@
     <string name="home_local_server_password_placeholder">留空以禁用身份验证</string>
     <string name="home_local_lan_password_warning">启用局域网访问且未设置密码。网络中的任何人都可以打开此服务器。</string>
     <string name="home_local_auto_start_label">应用启动时自动启动本地服务器</string>
-    <string name="home_local_auto_start_desc">OC Remote打开时自动启动本地运行环境</string>
+    <string name="home_local_auto_start_desc">Crux打开时自动启动本地运行环境</string>
     <string name="home_local_startup_timeout_label">启动超时</string>
     <string name="home_local_startup_timeout_value">%1$d 秒</string>
     <string name="home_local_launch_options_title">启动选项</string>
@@ -628,7 +628,7 @@
     <string name="sync_gist_id_desc">留空则创建私有 Gist</string>
     <string name="sync_github_token">GitHub 令牌</string>
     <string name="sync_webdav_url">WebDAV 文件 URL</string>
-    <string name="sync_webdav_url_desc">OCRemote.json 文件的完整 URL</string>
+    <string name="sync_webdav_url_desc">Crux.json 文件的完整 URL</string>
     <string name="sync_username">用户名</string>
     <string name="sync_webdav_password">WebDAV 密码</string>
     <string name="sync_credential_saved_hint">留空则保留已安全存储的值</string>
@@ -693,7 +693,7 @@
     <string name="settings_terminal_panel_hint">终端面板提示</string>
     <string name="settings_terminal_panel_hint_desc">每次启动应用时显示一次面板打开说明</string>
     <string name="sync_backend_document">文件</string>
-    <string name="sync_document_desc">从 Google Drive 或系统文件选择器中的其他应用选择一个 OCRemote.json 文件。</string>
+    <string name="sync_document_desc">从 Google Drive 或系统文件选择器中的其他应用选择一个 Crux.json 文件。</string>
     <string name="sync_document_choose">选择文件</string>
     <string name="sync_document_create">新建文件</string>
     <string name="sync_document_selected">已选择同步文件</string>

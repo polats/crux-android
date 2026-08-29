@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">OC Remote</string>
+    <string name="app_name">Crux</string>
     
     <!-- Home Screen -->
-    <string name="home_title">OC Remote</string>
+    <string name="home_title">Crux</string>
     <string name="home_add_server">Add Server</string>
     <string name="home_no_servers">No servers configured</string>
     <string name="home_server_health_good">Connected</string>
@@ -56,7 +56,7 @@
     <string name="home_local_run_background_label">Run server in background</string>
     <string name="home_local_run_background_desc">Use Termux background task mode to start local runtime</string>
     <string name="home_local_auto_start_label">Auto-start local server on app launch</string>
-    <string name="home_local_auto_start_desc">Start local runtime automatically when OC Remote opens</string>
+    <string name="home_local_auto_start_desc">Start local runtime automatically when Crux opens</string>
     <string name="home_local_auto_start_requires_background">Auto-start requires background mode</string>
     <string name="home_local_startup_timeout_label">Startup timeout</string>
     <string name="home_local_startup_timeout_value">%1$d sec</string>
@@ -573,7 +573,7 @@
     <string name="notification_connecting">Connecting to %1$s…</string>
     <string name="notification_connected_count">Connected to %1$d of %2$d servers</string>
     <string name="notification_exit">Exit</string>
-    <string name="notification_inbox_title">OC Remote — %1$d/%2$d connected</string>
+    <string name="notification_inbox_title">Crux — %1$d/%2$d connected</string>
     <string name="notification_status_connected">Connected</string>
     <string name="notification_status_connecting">Connecting…</string>
     <string name="notification_response_ready">Response ready</string>
@@ -672,7 +672,7 @@ Tokens: ~%4$d -&gt; ~%5$d</string>
     <string name="about_description">Android client for OpenCode servers</string>
     <string name="about_unofficial">This is an unofficial community project, not affiliated with the OpenCode team.</string>
     <string name="about_github">GitHub</string>
-    <string name="about_github_url">https://github.com/crim50n/oc-remote</string>
+    <string name="about_github_url">https://github.com/polats/crux</string>
     <string name="about_opencode">OpenCode</string>
     <string name="about_opencode_url">https://github.com/anomalyco/opencode</string>
     <string name="about_license">License</string>
@@ -699,10 +699,10 @@ Tokens: ~%4$d -&gt; ~%5$d</string>
     <string name="sync_gist_id_desc">Leave empty to create a private Gist</string>
     <string name="sync_github_token">GitHub token</string>
     <string name="sync_webdav_url">WebDAV file URL</string>
-    <string name="sync_webdav_url_desc">Full URL of the OCRemote.json file</string>
+    <string name="sync_webdav_url_desc">Full URL of the Crux.json file</string>
     <string name="sync_username">Username</string>
     <string name="sync_webdav_password">WebDAV password</string>
-    <string name="sync_document_desc">Choose an OCRemote.json file from Google Drive or any other app available in the system file picker.</string>
+    <string name="sync_document_desc">Choose a Crux.json file from Google Drive or any other app available in the system file picker.</string>
     <string name="sync_document_choose">Choose file</string>
     <string name="sync_document_create">Create file</string>
     <string name="sync_document_selected">Selected sync file</string>

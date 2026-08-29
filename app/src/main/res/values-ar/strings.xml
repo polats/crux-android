@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">OC Remote</string>
+    <string name="app_name">Crux</string>
     <!-- Home Screen -->
-    <string name="home_title">OC Remote</string>
+    <string name="home_title">Crux</string>
     <string name="home_add_server">إضافة خادم</string>
     <string name="home_no_servers">لا توجد خوادم مُعدّة</string>
     <string name="home_server_health_good">متصل</string>
@@ -284,7 +284,7 @@
     <string name="notification_channel_permissions_desc">إشعارات عند طلب OpenCode أذونات</string>
     <string name="notification_connecting">جاري الاتصال بـ %1$s…</string>
     <string name="notification_connected_count">متصل بـ %1$d من %2$d خوادم</string>
-    <string name="notification_inbox_title">OC Remote — %1$d/%2$d متصل</string>
+    <string name="notification_inbox_title">Crux — %1$d/%2$d متصل</string>
     <string name="notification_status_connected">متصل</string>
     <string name="notification_status_connecting">جاري الاتصال…</string>
     <string name="notification_response_ready">الرد جاهز</string>
@@ -307,7 +307,7 @@
     <string name="about_description">عميل Android لخوادم OpenCode</string>
     <string name="about_unofficial">هذا مشروع مجتمعي غير رسمي، وغير تابع لفريق OpenCode.</string>
     <string name="about_github">GitHub</string>
-    <string name="about_github_url">https://github.com/crim50n/oc-remote</string>
+    <string name="about_github_url">https://github.com/polats/crux</string>
     <string name="about_opencode">OpenCode</string>
     <string name="about_opencode_url">https://github.com/anomalyco/opencode</string>
     <string name="about_license">الترخيص</string>
@@ -449,7 +449,7 @@
     <string name="home_local_server_password_placeholder">اترك الحقل فارغًا لتعطيل المصادقة</string>
     <string name="home_local_lan_password_warning">تم تفعيل الوصول عبر الشبكة المحلية بدون كلمة مرور. يمكن لأي شخص على شبكتك فتح هذا الخادم.</string>
     <string name="home_local_auto_start_label">تشغيل الخادم المحلي تلقائيًا عند فتح التطبيق</string>
-    <string name="home_local_auto_start_desc">تشغيل البيئة المحلية تلقائيًا عند فتح OC Remote</string>
+    <string name="home_local_auto_start_desc">تشغيل البيئة المحلية تلقائيًا عند فتح Crux</string>
     <string name="home_local_startup_timeout_label">مدة الانتظار عند بدء التشغيل</string>
     <string name="home_local_startup_timeout_value">%1$d ثانية</string>
     <string name="home_local_launch_options_title">خيارات التشغيل</string>
@@ -628,7 +628,7 @@
     <string name="sync_gist_id_desc">اترك الحقل فارغًا لإنشاء Gist خاص</string>
     <string name="sync_github_token">رمز GitHub</string>
     <string name="sync_webdav_url">رابط ملف WebDAV</string>
-    <string name="sync_webdav_url_desc">الرابط الكامل لملف OCRemote.json</string>
+    <string name="sync_webdav_url_desc">الرابط الكامل لملف Crux.json</string>
     <string name="sync_username">اسم المستخدم</string>
     <string name="sync_webdav_password">كلمة مرور WebDAV</string>
     <string name="sync_credential_saved_hint">اترك الحقل فارغًا للاحتفاظ بالقيمة المخزنة بأمان</string>
@@ -693,7 +693,7 @@
     <string name="settings_terminal_panel_hint">تلميحة لوحة الطرفية</string>
     <string name="settings_terminal_panel_hint_desc">عرض تعليمات فتح اللوحة مرة واحدة في كل مرة يتم فيها تشغيل التطبيق</string>
     <string name="sync_backend_document">ملف</string>
-    <string name="sync_document_desc">اختر ملف OCRemote.json من Google Drive أو أي تطبيق آخر متاح في منتقي الملفات بالنظام.</string>
+    <string name="sync_document_desc">اختر ملف Crux.json من Google Drive أو أي تطبيق آخر متاح في منتقي الملفات بالنظام.</string>
     <string name="sync_document_choose">اختر ملف</string>
     <string name="sync_document_create">إنشاء ملف</string>
     <string name="sync_document_selected">ملف المزامنة المحدد</string>

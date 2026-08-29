@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">OC Remote</string>
+    <string name="app_name">Crux</string>
     <!-- Home Screen -->
-    <string name="home_title">OC Remote</string>
+    <string name="home_title">Crux</string>
     <string name="home_add_server">Tambah Server</string>
     <string name="home_no_servers">Tidak ada server yang dikonfigurasi</string>
     <string name="home_server_health_good">Tersambung</string>
@@ -260,7 +260,7 @@
     <string name="notification_connected">Tersambung ke %1$s</string>
     <string name="notification_connecting">Menyambungkan ke %1$s…</string>
     <string name="notification_connected_count">Tersambung ke %1$d dari %2$d server</string>
-    <string name="notification_inbox_title">OC Remote — %1$d/%2$d tersambung</string>
+    <string name="notification_inbox_title">Crux — %1$d/%2$d tersambung</string>
     <string name="notification_status_connected">Tersambung</string>
     <string name="notification_status_connecting">Menyambungkan…</string>
     <string name="notification_response_ready">Respons siap</string>
@@ -313,7 +313,7 @@
     <string name="about_description">Klien Android untuk server OpenCode</string>
     <string name="about_unofficial">Ini adalah proyek komunitas tidak resmi, tidak berafiliasi dengan tim OpenCode.</string>
     <string name="about_github">GitHub</string>
-    <string name="about_github_url">https://github.com/crim50n/oc-remote</string>
+    <string name="about_github_url">https://github.com/polats/crux</string>
     <string name="about_opencode">OpenCode</string>
     <string name="about_opencode_url">https://github.com/anomalyco/opencode</string>
     <string name="about_license">Lisensi</string>
@@ -455,7 +455,7 @@ Token: ~%4$d -&gt; ~%5$d</string>
     <string name="home_local_server_password_placeholder">Biarkan kosong untuk menonaktifkan autentikasi</string>
     <string name="home_local_lan_password_warning">Akses LAN diaktifkan tanpa kata sandi. Siapa pun di jaringan Anda dapat membuka server ini.</string>
     <string name="home_local_auto_start_label">Mulai server lokal secara otomatis saat aplikasi dibuka</string>
-    <string name="home_local_auto_start_desc">Jalankan runtime lokal secara otomatis saat OC Remote dibuka</string>
+    <string name="home_local_auto_start_desc">Jalankan runtime lokal secara otomatis saat Crux dibuka</string>
     <string name="home_local_startup_timeout_label">Batas waktu startup</string>
     <string name="home_local_startup_timeout_value">%1$d detik</string>
     <string name="home_local_launch_options_title">Opsi peluncuran</string>
@@ -634,7 +634,7 @@ Token: ~%4$d -&gt; ~%5$d</string>
     <string name="sync_gist_id_desc">Biarkan kosong untuk membuat Gist privat</string>
     <string name="sync_github_token">Token GitHub</string>
     <string name="sync_webdav_url">URL file WebDAV</string>
-    <string name="sync_webdav_url_desc">URL lengkap file OCRemote.json</string>
+    <string name="sync_webdav_url_desc">URL lengkap file Crux.json</string>
     <string name="sync_username">Nama pengguna</string>
     <string name="sync_webdav_password">Kata sandi WebDAV</string>
     <string name="sync_credential_saved_hint">Biarkan kosong untuk mempertahankan nilai yang tersimpan dengan aman</string>
@@ -699,7 +699,7 @@ Token: ~%4$d -&gt; ~%5$d</string>
     <string name="settings_terminal_panel_hint">Petunjuk panel terminal</string>
     <string name="settings_terminal_panel_hint_desc">Tampilkan instruksi membuka panel setiap kali aplikasi dimulai</string>
     <string name="sync_backend_document">Berkas</string>
-    <string name="sync_document_desc">Pilih file OCRemote.json dari Google Drive atau aplikasi lain yang tersedia di pemilih berkas sistem.</string>
+    <string name="sync_document_desc">Pilih file Crux.json dari Google Drive atau aplikasi lain yang tersedia di pemilih berkas sistem.</string>
     <string name="sync_document_choose">Pilih berkas</string>
     <string name="sync_document_create">Buat berkas</string>
     <string name="sync_document_selected">File sinkronisasi yang dipilih</string>

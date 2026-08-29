@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">OC Remote</string>
+    <string name="app_name">Crux</string>
     <!-- Home Screen -->
-    <string name="home_title">OC Remote</string>
+    <string name="home_title">Crux</string>
     <string name="home_add_server">Sunucu Ekle</string>
     <string name="home_no_servers">Sunucu yapılandırılmadı</string>
     <string name="home_server_health_good">Bağlandı</string>
@@ -284,7 +284,7 @@
     <string name="notification_channel_permissions_desc">OpenCode izin istediğinde bildirimler</string>
     <string name="notification_connecting">%1$s\'e bağlanıyor…</string>
     <string name="notification_connected_count">%2$d sunucudan %1$d\'ine bağlandı</string>
-    <string name="notification_inbox_title">OC Remote — %1$d/%2$d bağlı</string>
+    <string name="notification_inbox_title">Crux — %1$d/%2$d bağlı</string>
     <string name="notification_status_connected">Bağlandı</string>
     <string name="notification_status_connecting">Bağlanıyor…</string>
     <string name="notification_response_ready">Cevap hazır</string>
@@ -307,7 +307,7 @@
     <string name="about_description">OpenCode sunucuları için Android istemcisi</string>
     <string name="about_unofficial">Bu, OpenCode ekibiyle bağlantılı olmayan gayriresmi bir topluluk projesidir.</string>
     <string name="about_github">GitHub</string>
-    <string name="about_github_url">https://github.com/crim50n/oc-remote</string>
+    <string name="about_github_url">https://github.com/polats/crux</string>
     <string name="about_opencode">OpenCode</string>
     <string name="about_opencode_url">https://github.com/anomalyco/opencode</string>
     <string name="about_license">Lisans</string>
@@ -449,7 +449,7 @@ Token: ~%4$d -&gt; ~%5$d</string>
     <string name="home_local_server_password_placeholder">Kimlik doğrulamayı devre dışı bırakmak için boş bırakın</string>
     <string name="home_local_lan_password_warning">LAN erişimi şifresiz olarak etkin. Ağınızdaki herkes bu sunucuyu açabilir.</string>
     <string name="home_local_auto_start_label">Uygulama açıldığında yerel sunucuyu otomatik başlat</string>
-    <string name="home_local_auto_start_desc">OC Remote açıldığında yerel çalışma zamanını otomatik başlat</string>
+    <string name="home_local_auto_start_desc">Crux açıldığında yerel çalışma zamanını otomatik başlat</string>
     <string name="home_local_startup_timeout_label">Başlatma zaman aşımı</string>
     <string name="home_local_startup_timeout_value">%1$d sn</string>
     <string name="home_local_launch_options_title">Başlatma seçenekleri</string>
@@ -628,7 +628,7 @@ Token: ~%4$d -&gt; ~%5$d</string>
     <string name="sync_gist_id_desc">Özel bir Gist oluşturmak için boş bırakın</string>
     <string name="sync_github_token">GitHub token</string>
     <string name="sync_webdav_url">WebDAV dosya URL’si</string>
-    <string name="sync_webdav_url_desc">OCRemote.json dosyasının tam URL’si</string>
+    <string name="sync_webdav_url_desc">Crux.json dosyasının tam URL’si</string>
     <string name="sync_username">Kullanıcı adı</string>
     <string name="sync_webdav_password">WebDAV şifresi</string>
     <string name="sync_credential_saved_hint">Güvenli şekilde saklanan değeri korumak için boş bırakın</string>
@@ -693,7 +693,7 @@ Token: ~%4$d -&gt; ~%5$d</string>
     <string name="settings_terminal_panel_hint">Terminal paneli ipucu</string>
     <string name="settings_terminal_panel_hint_desc">Panel açma talimatlarını uygulama her başlatıldığında bir kez göster</string>
     <string name="sync_backend_document">Dosya</string>
-    <string name="sync_document_desc">Google Drive veya sistem dosya seçicisindeki diğer uygulamalardan bir OCRemote.json dosyası seçin.</string>
+    <string name="sync_document_desc">Google Drive veya sistem dosya seçicisindeki diğer uygulamalardan bir Crux.json dosyası seçin.</string>
     <string name="sync_document_choose">Dosya seç</string>
     <string name="sync_document_create">Dosya oluştur</string>
     <string name="sync_document_selected">Seçilen senkronizasyon dosyası</string>
