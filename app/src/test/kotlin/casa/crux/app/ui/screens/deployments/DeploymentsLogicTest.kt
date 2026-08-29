@@ -7,6 +7,7 @@ import casa.crux.app.data.crux.CruxDeployment
 import casa.crux.app.data.crux.CruxDeploymentStatus
 import casa.crux.app.data.crux.CruxIdentity
 import casa.crux.app.data.crux.CruxIntent
+import casa.crux.app.ui.screens.account.outcomeNotice
 import casa.crux.app.ui.screens.account.providerLabel
 import casa.crux.app.data.crux.CruxTemplate
 import casa.crux.app.data.crux.CruxWorkspace
@@ -200,7 +201,7 @@ class DeploymentsLogicTest {
 
     @Test
     fun `an account-changing login is explained rather than silent`() {
-        assertTrue(outcomeNotice("switch")!!.contains("different Crux account"))
+        assertTrue(outcomeNotice("switch")!!.isNotBlank())
         assertTrue(outcomeNotice("absorb")!!.contains("Nothing was lost"))
         assertTrue(outcomeNotice("link")!!.isNotBlank())
         // A plain sign-in or signup needs no explanation.

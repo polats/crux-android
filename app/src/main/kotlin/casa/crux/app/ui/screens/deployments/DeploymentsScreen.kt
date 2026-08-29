@@ -63,7 +63,6 @@ import kotlinx.coroutines.flow.SharedFlow
 fun DeploymentsScreen(
     onNavigateBack: () -> Unit,
     onServerConnected: (String) -> Unit,
-    authCodeFlow: SharedFlow<String>? = null,
     viewModel: DeploymentsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -74,9 +73,6 @@ fun DeploymentsScreen(
     // Custom Tab reuses the browser session, so an existing crux.casa login signs in at once.
     LaunchedEffect(Unit) {
         viewModel.authorizationUrls.collect { url -> openCustomTab(context, url) }
-    }
-    LaunchedEffect(authCodeFlow) {
-        authCodeFlow?.collect { code -> viewModel.completeSignIn(code) }
     }
     LaunchedEffect(Unit) {
         viewModel.connected.collect(onServerConnected)

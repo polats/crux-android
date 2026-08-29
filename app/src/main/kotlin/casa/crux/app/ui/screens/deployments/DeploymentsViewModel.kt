@@ -62,7 +62,14 @@ class DeploymentsViewModel @Inject constructor(
     private var pollJob: Job? = null
 
     init {
-        refresh()
+        // The shared signed-in flow drives this, so signing in or out anywhere is reflected
+        // here without the screen polling on entry.
+        viewModelScope.launch {
+            repository.signedIn.collect { signedIn ->
+                _uiState.update { it.copy(signedIn = signedIn == true) }
+                if (signedIn == true) refresh() else pollJob?.cancel()
+            }
+        }
     }
 
     fun refresh() {
@@ -124,50 +131,6 @@ class DeploymentsViewModel @Inject constructor(
         }
     }
 
-    /** Attach another provider to the account already signed in here. */
-    fun linkProvider(provider: String) = signIn(provider, CruxIntent.LINK)
-
-    /** Sign in as somebody else: clears the browser session and re-prompts the provider. */
-    fun switchAccount(provider: String) = signIn(provider, CruxIntent.SWITCH)
-
-    fun dismissNotice() = _uiState.update { it.copy(notice = null) }
-
-    fun unlinkGithub() {
-        viewModelScope.launch {
-            try {
-                repository.unlinkGithub()
-                refresh()
-            } catch (e: Exception) {
-                _uiState.update { it.copy(error = e.message ?: "Could not disconnect GitHub") }
-            }
-        }
-    }
-
-    /** Called when the crux:// callback arrives, with the code already extracted. */
-    fun completeSignIn(code: String) {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
-            try {
-                val (_, outcome) = repository.completeSignIn(code)
-                _uiState.update { it.copy(notice = outcomeNotice(outcome)) }
-                refresh()
-            } catch (e: Exception) {
-                Log.e(TAG, "Sign-in failed", e)
-                _uiState.update { it.copy(isLoading = false, error = e.message ?: "Sign-in failed") }
-            }
-        }
-    }
-
-    fun signOut() {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
-            repository.signOut()
-            pollJob?.cancel()
-            _uiState.value = DeploymentsUiState(signedIn = false, isLoading = false)
-            refresh()
-        }
-    }
-
     fun showCreateDialog(show: Boolean) = _uiState.update { it.copy(showCreateDialog = show, error = null) }
 
     fun create(request: CruxCreateRequest) {
@@ -206,17 +169,6 @@ class DeploymentsViewModel @Inject constructor(
         }
     }
 
-    fun switchProvider(provider: String) {
-        viewModelScope.launch {
-            try {
-                repository.switchProvider(provider)
-                refresh()
-            } catch (e: Exception) {
-                _uiState.update { it.copy(error = e.message ?: "Could not switch account") }
-            }
-        }
-    }
-
     fun dismissError() = _uiState.update { it.copy(error = null) }
 
     private fun act(id: String, block: suspend () -> Unit) {
@@ -241,7 +193,7 @@ class DeploymentsViewModel @Inject constructor(
         _uiState.value = DeploymentsUiState(
             signedIn = false,
             isLoading = false,
-            error = cause.message ?: "Sign in to Crux again",
+            error = cause.message ?: "Sign in again",
         )
     }
 
@@ -295,19 +247,6 @@ internal fun orderDeployments(deployments: List<CruxDeployment>): List<CruxDeplo
         compareByDescending<CruxDeployment> { it.status.isPending }
             .thenByDescending { it.createdAt ?: "" }
     )
-
-/**
- * Explains a login that moved you between accounts. Saying nothing is what made the flow
- * feel arbitrary — the account silently changed and the UI never mentioned it.
- */
-internal fun outcomeNotice(outcome: String?): String? = when (outcome) {
-    "switch" -> "That provider account belongs to a different Crux account, so you are now " +
-        "signed into that one. Anything linked to your previous account stayed there."
-    "absorb" -> "That provider account belongs to another Crux account, so your links were " +
-        "moved into it. Nothing was lost."
-    "link" -> "Connected to your existing Crux account."
-    else -> null
-}
 
 /** Identities that can actually hold a deployment; GitHub signs you in but cannot host. */
 internal fun deployableIdentities(account: CruxAccount?): List<CruxIdentity> =

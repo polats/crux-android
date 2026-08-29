@@ -39,8 +39,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.ui.platform.LocalContext
 import casa.crux.app.R
 import casa.crux.app.ui.components.AppSecondaryButton
-import casa.crux.app.ui.screens.deployments.DeploymentsUiState
-import casa.crux.app.ui.screens.deployments.DeploymentsViewModel
 import casa.crux.app.ui.screens.deployments.configuredProviders
 import casa.crux.app.ui.screens.deployments.openCustomTab
 import casa.crux.app.ui.screens.deployments.deployableIdentities
@@ -58,7 +56,7 @@ import casa.crux.app.ui.screens.deployments.LOGIN_PROVIDERS
 @Composable
 fun AccountScreen(
     onNavigateBack: () -> Unit,
-    viewModel: DeploymentsViewModel = hiltViewModel(),
+    viewModel: AccountViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
     val context = LocalContext.current
@@ -90,7 +88,7 @@ fun AccountScreen(
         AccountContent(
             state = state,
             modifier = Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()),
-            onSwitchDeployTarget = viewModel::switchProvider,
+            onSwitchDeployTarget = viewModel::switchDeployTarget,
             onLink = viewModel::linkProvider,
             onSwitchAccount = viewModel::switchAccount,
             onUnlinkGithub = viewModel::unlinkGithub,
@@ -103,7 +101,7 @@ fun AccountScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AccountContent(
-    state: DeploymentsUiState,
+    state: AccountUiState,
     modifier: Modifier = Modifier,
     onSwitchDeployTarget: (String) -> Unit,
     onLink: (String) -> Unit,
@@ -117,7 +115,7 @@ private fun AccountContent(
     val linkable = linkableProviders(account)
     val github = account?.identities.orEmpty().firstOrNull { it.provider == "github" }
 
-    if (!state.signedIn) {
+    if (state.signedIn != true) {
         Column(
             modifier = modifier.padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -134,7 +132,7 @@ private fun AccountContent(
             state.error?.let {
                 Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
             }
-            val offered = state.availableProviders.ifEmpty { LOGIN_PROVIDERS }
+            val offered = configuredProviders(state.account).ifEmpty { LOGIN_PROVIDERS }
             offered.forEach { provider ->
                 AppSecondaryButton(onClick = { onSignIn(provider) }, modifier = Modifier.fillMaxWidth()) {
                     Text(stringResource(R.string.deployments_account_sign_in, providerLabel(provider)))

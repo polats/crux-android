@@ -154,7 +154,6 @@ internal fun buildSharePickerItems(
 fun NavGraph(
     deepLinkFlow: MutableSharedFlow<SessionDeepLink>,
     sharedAttachmentsFlow: SharedFlow<List<Uri>>,
-    cruxAuthCodeFlow: SharedFlow<String>,
     settingsRepository: SettingsRepository,
     serverRepository: ServerRepository,
     eventReducer: EventReducer,
@@ -574,7 +573,6 @@ fun NavGraph(
                     // back to the list that already knows how to open one.
                     navController.popBackStack(Screen.Home.route, inclusive = false)
                 },
-                authCodeFlow = cruxAuthCodeFlow,
             )
         }
 

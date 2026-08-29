@@ -28,6 +28,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import casa.crux.app.data.repository.SettingsRepository
 import casa.crux.app.data.repository.ServerConnectionStateRepository
+import casa.crux.app.data.crux.CruxRepository
 import casa.crux.app.data.crux.cruxAuthCodeFrom
 import casa.crux.app.data.repository.ServerRepository
 import casa.crux.app.data.repository.EventReducer
@@ -93,6 +94,9 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var serverConnectionStateRepository: ServerConnectionStateRepository
+
+    @Inject
+    lateinit var cruxRepository: CruxRepository
     
     /**
      * Shared flow for deep-link events from notification taps.
@@ -108,14 +112,6 @@ class MainActivity : ComponentActivity() {
      */
     private val _sharedAttachmentsFlow = MutableSharedFlow<List<Uri>>(replay = 1)
     val sharedAttachmentsFlow = _sharedAttachmentsFlow.asSharedFlow()
-
-    /**
-     * Authorization codes from the crux.casa sign-in returning through crux://auth/callback.
-     * replay=1 because the Custom Tab can deliver the callback before the Deployments screen
-     * is collecting again.
-     */
-    private val _cruxAuthCodeFlow = MutableSharedFlow<String>(replay = 1)
-    val cruxAuthCodeFlow = _cruxAuthCodeFlow.asSharedFlow()
 
     /** Language code applied via attachBaseContext for this Activity instance. */
     private var appliedLanguage: String = ""
@@ -217,7 +213,6 @@ class MainActivity : ComponentActivity() {
                     NavGraph(
                         deepLinkFlow = _deepLinkFlow,
                         sharedAttachmentsFlow = sharedAttachmentsFlow,
-                        cruxAuthCodeFlow = cruxAuthCodeFlow,
                         settingsRepository = settingsRepository,
                         serverRepository = serverRepository,
                         eventReducer = eventReducer,
@@ -248,7 +243,10 @@ class MainActivity : ComponentActivity() {
         val code = cruxAuthCodeFrom(intent.data) ?: return
         // Consume it, so a rotation or a later share intent cannot replay the redirect.
         intent.data = null
-        lifecycleScope.launch { _cruxAuthCodeFlow.emit(code) }
+        // Handed to the repository rather than to a screen: the browser can return long after
+        // the screen that started the sign-in is gone, and the repository's own scope survives
+        // an Activity recreation mid-exchange.
+        cruxRepository.submitAuthCode(code)
     }
     
     private fun handleSessionIntent(intent: Intent?) {

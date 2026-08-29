@@ -46,10 +46,10 @@ class CruxApi @Inject constructor(
     private suspend fun HttpResponse.decodeOrThrow(): String {
         val text = bodyAsText()
         if (status == HttpStatusCode.Unauthorized) {
-            throw CruxUnauthorizedException(errorMessage(text) ?: "Sign in to Crux again")
+            throw CruxUnauthorizedException(errorMessage(text) ?: "Sign in again")
         }
         if (!status.isSuccess()) {
-            throw CruxApiException(errorMessage(text) ?: "Crux request failed (${status.value})")
+            throw CruxApiException(errorMessage(text) ?: "Request failed (${status.value})")
         }
         return text
     }
@@ -86,7 +86,7 @@ class CruxApi @Inject constructor(
     suspend fun linkTicket(token: String): String {
         val text = client.post(url("/auth/native/link-ticket")) { bearer(token) }.decodeOrThrow()
         return json.parseToJsonElement(text).jsonObject["ticket"]?.jsonPrimitive?.content
-            ?: throw CruxApiException("Crux did not return a link ticket")
+            ?: throw CruxApiException("The server did not return a link ticket")
     }
 
     suspend fun unlinkGithub(token: String) {

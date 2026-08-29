@@ -10,14 +10,24 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import casa.crux.app.data.repository.ServerRepository
 import casa.crux.app.data.sync.LocalSyncSecretStore
 import casa.crux.app.domain.model.ServerConfig
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * The Crux account on this device: the bearer token, who it belongs to, and the deployments
+ * The sign-in held on this device: the bearer token, who it belongs to, and the deployments
  * it can reach.
  *
  * The token and the in-flight PKCE verifier live in [LocalSyncSecretStore], which is backed by
@@ -33,6 +43,32 @@ class CruxRepository @Inject constructor(
     private val serverRepository: ServerRepository,
 ) {
     private val accountKey = stringPreferencesKey(ACCOUNT_KEY)
+
+    /**
+     * Work that must outlive the screen that started it. The browser can come back long
+     * after the Account screen has gone, and an Activity-scoped job would be cancelled
+     * halfway through the token exchange.
+     */
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    /**
+     * Whether this device holds a token.
+     *
+     * The token lives in encrypted SharedPreferences, which is not observable, so its
+     * presence is mirrored here and every screen reacts to a sign-in or sign-out wherever it
+     * happened. Seeded lazily rather than in the constructor: reading it unlocks an
+     * AndroidKeyStore key, and Hilt builds this singleton on the main thread.
+     */
+    private val _signedIn = MutableStateFlow<Boolean?>(null)
+    val signedIn: StateFlow<Boolean?> = _signedIn.asStateFlow()
+
+    /** Sign-in results, kept until a screen is around to explain them. */
+    private val _events = MutableSharedFlow<CruxSignInEvent>(replay = 1)
+    val events: SharedFlow<CruxSignInEvent> = _events.asSharedFlow()
+
+    init {
+        scope.launch { _signedIn.value = isSignedIn() }
+    }
 
     /** The signed-in account as last seen, or null when signed out. */
     val account: Flow<CruxAccount?> = dataStore.data.map { preferences ->
@@ -62,13 +98,27 @@ class CruxRepository @Inject constructor(
     }
 
     /** Returns the outcome alongside the account, so a changed identity can be explained. */
-    suspend fun completeSignIn(code: String): Pair<CruxAccount, String?> {
-        val verifier = secrets.get(LocalSyncSecretStore.SecretKey.CRUX_PKCE_VERIFIER)
-            ?: throw CruxApiException("This sign-in did not start on this device")
-        val issued = api.exchangeCode(code, verifier, deviceLabel())
-        secrets.put(LocalSyncSecretStore.SecretKey.CRUX_PKCE_VERIFIER, null)
-        secrets.put(LocalSyncSecretStore.SecretKey.CRUX_TOKEN, issued.token)
-        return refreshAccount() to issued.outcome
+    /**
+     * Completes a sign-in started anywhere in the app. Deliberately fire-and-forget: the
+     * redirect lands on the Activity, but finishing it is the app's business, not that of
+     * whichever screen happens to be on top — which is why signing in from the Account
+     * screen used to do nothing at all.
+     */
+    fun submitAuthCode(code: String) {
+        scope.launch {
+            try {
+                val verifier = secrets.get(LocalSyncSecretStore.SecretKey.CRUX_PKCE_VERIFIER)
+                    ?: throw CruxApiException("This sign-in did not start on this device")
+                val issued = api.exchangeCode(code, verifier, deviceLabel())
+                secrets.put(LocalSyncSecretStore.SecretKey.CRUX_PKCE_VERIFIER, null)
+                storeToken(issued.token)
+                refreshAccount()
+                _events.emit(CruxSignInEvent.SignedIn(issued.outcome))
+            } catch (e: Exception) {
+                Log.e(TAG, "Sign-in failed", e)
+                _events.emit(CruxSignInEvent.Failed(e.message ?: "Sign-in failed"))
+            }
+        }
     }
 
     /**
@@ -80,9 +130,28 @@ class CruxRepository @Inject constructor(
             runCatching { api.revoke(existing) }
                 .onFailure { Log.w(TAG, "Could not revoke the token; clearing it locally anyway") }
         }
+        clearSession()
+    }
+
+    /** The one place the token is written, so [signedIn] can never drift from reality. */
+    private fun storeToken(value: String) {
+        secrets.put(LocalSyncSecretStore.SecretKey.CRUX_TOKEN, value)
+        _signedIn.value = true
+    }
+
+    private suspend fun clearSession() {
         secrets.put(LocalSyncSecretStore.SecretKey.CRUX_TOKEN, null)
         secrets.put(LocalSyncSecretStore.SecretKey.CRUX_PKCE_VERIFIER, null)
+        _signedIn.value = false
         dataStore.edit { it.remove(accountKey) }
+    }
+
+    /**
+     * A token revoked elsewhere should drop this device to signed-out once, rather than
+     * every screen discovering it separately.
+     */
+    suspend fun onUnauthorized() {
+        if (_signedIn.value != false) clearSession()
     }
 
     suspend fun unlinkGithub() {
@@ -143,7 +212,7 @@ class CruxRepository @Inject constructor(
     }
 
     private fun requireToken(): String =
-        token() ?: throw CruxUnauthorizedException("Sign in to Crux first")
+        token() ?: throw CruxUnauthorizedException("Sign in first")
 
     private fun deviceLabel(): String =
         listOfNotNull(Build.MANUFACTURER?.replaceFirstChar(Char::uppercase), Build.MODEL)
@@ -155,6 +224,12 @@ class CruxRepository @Inject constructor(
         private const val TAG = "CruxRepository"
         private const val ACCOUNT_KEY = "crux_account"
     }
+}
+
+/** What a completed sign-in attempt produced. */
+sealed interface CruxSignInEvent {
+    data class SignedIn(val outcome: String?) : CruxSignInEvent
+    data class Failed(val message: String) : CruxSignInEvent
 }
 
 /**
