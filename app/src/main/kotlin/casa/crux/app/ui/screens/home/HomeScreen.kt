@@ -130,8 +130,8 @@ fun HomeScreen(
     onNavigateToCrossServerSessions: () -> Unit = {},
     onNavigateToServerSettings: (serverUrl: String, username: String, password: String, serverName: String, serverId: String) -> Unit = { _, _, _, _, _ -> },
     onNavigateToSettings: () -> Unit = {},
-    onNavigateToAbout: () -> Unit = {},
     onNavigateToDeployments: () -> Unit = {},
+    onNavigateToAccount: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -226,8 +226,11 @@ fun HomeScreen(
                     IconButton(onClick = onNavigateToSettings) {
                         Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.settings_title))
                     }
-                    IconButton(onClick = onNavigateToAbout) {
-                        Icon(Icons.Default.Info, contentDescription = stringResource(R.string.about_title))
+                    IconButton(onClick = onNavigateToAccount) {
+                        Icon(
+                            Icons.Default.AccountCircle,
+                            contentDescription = stringResource(R.string.deployments_account_title),
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(

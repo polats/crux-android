@@ -18,6 +18,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.BatteryChargingFull
 import androidx.compose.material.icons.filled.BugReport
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.ColorLens
@@ -88,6 +89,7 @@ fun SettingsScreen(
     onNavigateBack: () -> Unit,
     onNavigateToDiagnostics: () -> Unit = {},
     onNavigateToSync: () -> Unit = {},
+    onNavigateToAbout: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val currentLanguage by viewModel.appLanguage.collectAsState()
@@ -608,6 +610,13 @@ fun SettingsScreen(
                 supportingContent = { Text(stringResource(R.string.diagnostics_settings_desc)) },
                 leadingContent = { Icon(Icons.Default.BugReport, contentDescription = null) },
                 modifier = Modifier.clickable(onClick = onNavigateToDiagnostics),
+            )
+
+            ListItem(
+                headlineContent = { Text(stringResource(R.string.about_title)) },
+                supportingContent = { Text(stringResource(R.string.settings_about_desc)) },
+                leadingContent = { Icon(Icons.Default.Info, contentDescription = null) },
+                modifier = Modifier.clickable(onClick = onNavigateToAbout),
             )
 
         }

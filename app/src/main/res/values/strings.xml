@@ -787,5 +787,7 @@ Tokens: ~%4$d -&gt; ~%5$d</string>
     <string name="deployments_account_link">Connect %1$s</string>
     <string name="deployments_account_switch_hint">Signing out of Crux does not sign you out of the provider, so use these to pick a different account there.</string>
     <string name="deployments_account_switch">Sign in as someone else with %1$s</string>
+    <string name="deployments_account_sign_in">Sign in with %1$s</string>
+    <string name="settings_about_desc">Version, updates, links and licence</string>
     <string name="deployments_account_stale">Your %1$s access expired. Sign in again to continue.</string>
 </resources>

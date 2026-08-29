@@ -7,6 +7,7 @@ import casa.crux.app.data.crux.CruxDeployment
 import casa.crux.app.data.crux.CruxDeploymentStatus
 import casa.crux.app.data.crux.CruxIdentity
 import casa.crux.app.data.crux.CruxIntent
+import casa.crux.app.ui.screens.account.providerLabel
 import casa.crux.app.data.crux.CruxTemplate
 import casa.crux.app.data.crux.CruxWorkspace
 import org.junit.Assert.assertEquals

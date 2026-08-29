@@ -104,12 +104,6 @@ fun DeploymentsScreen(
                         IconButton(onClick = { viewModel.showCreateDialog(true) }) {
                             Icon(Icons.Default.Add, contentDescription = stringResource(R.string.deployments_create))
                         }
-                        IconButton(onClick = { viewModel.showAccountSheet(true) }) {
-                            Icon(
-                                Icons.Default.AccountCircle,
-                                contentDescription = stringResource(R.string.deployments_account_open),
-                            )
-                        }
                     }
                 },
             )
@@ -136,18 +130,6 @@ fun DeploymentsScreen(
                 )
             }
         }
-    }
-
-    if (state.showAccountSheet) {
-        AccountSheet(
-            state = state,
-            onDismiss = { viewModel.showAccountSheet(false) },
-            onSwitchDeployTarget = viewModel::switchProvider,
-            onLink = { viewModel.showAccountSheet(false); viewModel.linkProvider(it) },
-            onSwitchAccount = { viewModel.showAccountSheet(false); viewModel.switchAccount(it) },
-            onUnlinkGithub = viewModel::unlinkGithub,
-            onSignOut = { viewModel.showAccountSheet(false); viewModel.signOut() },
-        )
     }
 
     if (state.showCreateDialog) {
@@ -333,6 +315,6 @@ private fun DeploymentCard(
     }
 }
 
-private fun openCustomTab(context: Context, url: String) {
+internal fun openCustomTab(context: Context, url: String) {
     CustomTabsIntent.Builder().setShowTitle(true).build().launchUrl(context, Uri.parse(url))
 }

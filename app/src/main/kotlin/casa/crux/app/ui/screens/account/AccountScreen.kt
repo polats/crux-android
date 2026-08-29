@@ -1,4 +1,4 @@
-package casa.crux.app.ui.screens.deployments
+package casa.crux.app.ui.screens.account
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -23,26 +23,93 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.ui.platform.LocalContext
 import casa.crux.app.R
-import casa.crux.app.ui.components.AppDialog
 import casa.crux.app.ui.components.AppSecondaryButton
+import casa.crux.app.ui.screens.deployments.DeploymentsUiState
+import casa.crux.app.ui.screens.deployments.DeploymentsViewModel
+import casa.crux.app.ui.screens.deployments.configuredProviders
+import casa.crux.app.ui.screens.deployments.openCustomTab
+import casa.crux.app.ui.screens.deployments.deployableIdentities
+import casa.crux.app.ui.screens.deployments.linkableProviders
+import casa.crux.app.ui.screens.deployments.showsDeployTarget
+import casa.crux.app.ui.screens.deployments.LOGIN_PROVIDERS
 
 /**
  * Everything about *who you are*, in one place.
  *
- * Previously the only account control was a sign-out button, and the three sign-in buttons
- * meant different things depending on browser state nobody could see. Sign in, link and
- * switch are now separate, named actions.
+ * A top-level destination rather than a dialog inside Spaces: the account decides who you
+ * are and where new spaces are created, which is not something to bury two levels down.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AccountSheet(
+fun AccountScreen(
+    onNavigateBack: () -> Unit,
+    viewModel: DeploymentsViewModel = hiltViewModel(),
+) {
+    val state by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+
+    // Signing in, linking and switching all open the provider in a real browser.
+    LaunchedEffect(Unit) {
+        viewModel.authorizationUrls.collect { url -> openCustomTab(context, url) }
+    }
+
+    Scaffold(
+        containerColor = MaterialTheme.colorScheme.surface,
+        topBar = {
+            TopAppBar(
+                title = { Text(stringResource(R.string.deployments_account_title)) },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.back),
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                ),
+            )
+        },
+    ) { padding ->
+        AccountContent(
+            state = state,
+            modifier = Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()),
+            onSwitchDeployTarget = viewModel::switchProvider,
+            onLink = viewModel::linkProvider,
+            onSwitchAccount = viewModel::switchAccount,
+            onUnlinkGithub = viewModel::unlinkGithub,
+            onSignIn = viewModel::signIn,
+            onSignOut = viewModel::signOut,
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AccountContent(
     state: DeploymentsUiState,
-    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
     onSwitchDeployTarget: (String) -> Unit,
     onLink: (String) -> Unit,
     onSwitchAccount: (String) -> Unit,
     onUnlinkGithub: () -> Unit,
+    onSignIn: (String) -> Unit,
     onSignOut: () -> Unit,
 ) {
     val account = state.account
@@ -50,13 +117,38 @@ fun AccountSheet(
     val linkable = linkableProviders(account)
     val github = account?.identities.orEmpty().firstOrNull { it.provider == "github" }
 
-    AppDialog(onDismissRequest = onDismiss) {
+    if (!state.signedIn) {
         Column(
-            modifier = Modifier.padding(20.dp),
+            modifier = modifier.padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text(stringResource(R.string.deployments_account_title), style = MaterialTheme.typography.titleLarge)
+            Text(
+                stringResource(R.string.deployments_signed_out_title),
+                style = MaterialTheme.typography.titleMedium,
+            )
+            Text(
+                stringResource(R.string.deployments_signed_out_body),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            state.error?.let {
+                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+            }
+            val offered = state.availableProviders.ifEmpty { LOGIN_PROVIDERS }
+            offered.forEach { provider ->
+                AppSecondaryButton(onClick = { onSignIn(provider) }, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.deployments_account_sign_in, providerLabel(provider)))
+                }
+            }
+        }
+        return
+    }
 
+    Column(
+        modifier = modifier.padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        run {
             account?.activeIdentity?.let { active ->
                 Text(
                     stringResource(

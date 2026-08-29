@@ -44,6 +44,7 @@ import casa.crux.app.ui.screens.chat.ChatScreen
 import casa.crux.app.ui.screens.files.WorkspaceFilesScreen
 import casa.crux.app.ui.screens.home.HomeScreen
 import casa.crux.app.ui.screens.about.AboutScreen
+import casa.crux.app.ui.screens.account.AccountScreen
 import casa.crux.app.ui.screens.deployments.DeploymentsScreen
 import casa.crux.app.ui.screens.sessions.SessionListScreen
 import casa.crux.app.ui.screens.sessions.CrossServerSessionsScreen
@@ -409,11 +410,11 @@ fun NavGraph(
                 onNavigateToSettings = {
                     navController.navigate(Screen.Settings.route)
                 },
-                onNavigateToAbout = {
-                    navController.navigate(Screen.About.route)
-                },
                 onNavigateToDeployments = {
                     navController.navigate(Screen.Deployments.route)
+                },
+                onNavigateToAccount = {
+                    navController.navigate(Screen.Account.route)
                 }
             )
         }
@@ -449,6 +450,7 @@ fun NavGraph(
         // ============ Settings Screen ============
         composable(Screen.Settings.route) {
             SettingsScreen(
+                onNavigateToAbout = { navController.navigate(Screen.About.route) },
                 onNavigateBack = {
                     navController.popBackStack()
                 },
@@ -574,6 +576,10 @@ fun NavGraph(
                 },
                 authCodeFlow = cruxAuthCodeFlow,
             )
+        }
+
+        composable(Screen.Account.route) {
+            AccountScreen(onNavigateBack = { navController.popBackStack() })
         }
 
         composable(Screen.About.route) {

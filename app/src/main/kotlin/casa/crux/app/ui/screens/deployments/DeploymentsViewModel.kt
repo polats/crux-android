@@ -42,7 +42,6 @@ data class DeploymentsUiState(
     val availableProviders: List<String> = emptyList(),
     /** Explains a login that changed which account you are in, as the dashboard does. */
     val notice: String? = null,
-    val showAccountSheet: Boolean = false,
 )
 
 @HiltViewModel
@@ -130,8 +129,6 @@ class DeploymentsViewModel @Inject constructor(
 
     /** Sign in as somebody else: clears the browser session and re-prompts the provider. */
     fun switchAccount(provider: String) = signIn(provider, CruxIntent.SWITCH)
-
-    fun showAccountSheet(show: Boolean) = _uiState.update { it.copy(showAccountSheet = show, error = null) }
 
     fun dismissNotice() = _uiState.update { it.copy(notice = null) }
 

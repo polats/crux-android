@@ -154,4 +154,5 @@ sealed class Screen(val route: String) {
     data object Diagnostics : Screen("diagnostics")
     data object About : Screen("about")
     data object Deployments : Screen("deployments")
+    data object Account : Screen("account")
 }
