@@ -18,8 +18,8 @@ android {
         applicationId = "casa.crux.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 26
-        versionName = "1.9.0"
+        versionCode = 27
+        versionName = "2.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
