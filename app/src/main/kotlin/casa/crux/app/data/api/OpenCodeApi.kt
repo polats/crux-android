@@ -45,21 +45,45 @@ import javax.inject.Singleton
 /**
  * Holds resolved connection info for a server.
  * Create one via [ServerConnection.from] and pass it to every API / SSE call.
+ *
+ * Headers are a map rather than a single Authorization string because a server running in a
+ * GitHub Codespace sits behind a private forwarded port: reaching it needs the user's GitHub
+ * token in `X-Github-Token` *as well as* Basic Auth, and the two are independent. Every call
+ * site attaches the whole map through [applyTo], so a further header costs nothing.
  */
 data class ServerConnection(
     val baseUrl: String,
-    val authHeader: String?
+    val headers: Map<String, String> = emptyMap()
 ) {
+    /** The Basic Auth header, for the few places that still need it on its own. */
+    val authHeader: String? get() = headers["Authorization"]
+
+    /** Attaches every header to a Ktor request. */
+    fun applyTo(builder: HttpMessageBuilder) {
+        headers.forEach { (name, value) -> builder.headers.append(name, value) }
+    }
+
+    /** Attaches every header to a raw OkHttp request. */
+    fun applyTo(builder: okhttp3.Request.Builder) {
+        headers.forEach { (name, value) -> builder.addHeader(name, value) }
+    }
+
     companion object {
-        fun from(url: String, username: String = "opencode", password: String? = null): ServerConnection {
+        fun from(
+            url: String,
+            username: String = "opencode",
+            password: String? = null,
+            extraHeaders: Map<String, String> = emptyMap()
+        ): ServerConnection {
             val base = url.trimEnd('/')
-            val auth = if (password != null) {
-                val credentials = "$username:$password"
-                "Basic ${Base64.getEncoder().encodeToString(credentials.toByteArray())}"
-            } else {
-                null
+            val headers = buildMap {
+                if (password != null) {
+                    val credentials = "$username:$password"
+                    put("Authorization", "Basic ${Base64.getEncoder().encodeToString(credentials.toByteArray())}")
+                }
+                putAll(extraHeaders)
             }
-            return ServerConnection(base, auth)
+            return ServerConnection(base, headers)
         }
     }
 }
@@ -96,7 +120,7 @@ class OpenCodeApi @Inject constructor(
 
     suspend fun getHealth(conn: ServerConnection): ServerHealth {
         val response = httpClient.get("${conn.baseUrl}/global/health") {
-            conn.authHeader?.let { header("Authorization", it) }
+            conn.applyTo(this)
         }
         healthStatusException(response.status.value)?.let { throw it }
         return response.body()
@@ -108,7 +132,7 @@ class OpenCodeApi @Inject constructor(
      */
     suspend fun getServerPaths(conn: ServerConnection): ServerPaths {
         return httpClient.get("${conn.baseUrl}/path") {
-            conn.authHeader?.let { header("Authorization", it) }
+            conn.applyTo(this)
         }.body()
     }
 
@@ -116,7 +140,7 @@ class OpenCodeApi @Inject constructor(
 
     suspend fun listProjects(conn: ServerConnection): List<Project> {
         return httpClient.get("${conn.baseUrl}/project") {
-            conn.authHeader?.let { header("Authorization", it) }
+            conn.applyTo(this)
         }.body()
     }
 
@@ -126,7 +150,7 @@ class OpenCodeApi @Inject constructor(
         directory: String? = null,
         workspaceId: String? = null,
     ): List<ProjectDirectory> = httpClient.get("${conn.baseUrl}/project/$projectId/directories") {
-        conn.authHeader?.let { header("Authorization", it) }
+        conn.applyTo(this)
         directory?.let { parameter("directory", it) }
         workspaceId?.let { parameter("workspace", it) }
     }.body()
@@ -136,14 +160,14 @@ class OpenCodeApi @Inject constructor(
         directory: String,
         workspaceId: String? = null,
     ): List<WorkspaceInfo> = httpClient.get("${conn.baseUrl}/experimental/workspace") {
-        conn.authHeader?.let { header("Authorization", it) }
+        conn.applyTo(this)
         parameter("directory", directory)
         workspaceId?.let { parameter("workspace", it) }
     }.body()
 
     suspend fun getCurrentProject(conn: ServerConnection): Project {
         return httpClient.get("${conn.baseUrl}/project/current") {
-            conn.authHeader?.let { header("Authorization", it) }
+            conn.applyTo(this)
         }.body()
     }
 
@@ -156,7 +180,7 @@ class OpenCodeApi @Inject constructor(
      */
     suspend fun listAgents(conn: ServerConnection): List<AgentInfo> {
         return httpClient.get("${conn.baseUrl}/agent") {
-            conn.authHeader?.let { header("Authorization", it) }
+            conn.applyTo(this)
         }.body()
     }
 
@@ -164,7 +188,7 @@ class OpenCodeApi @Inject constructor(
 
     suspend fun listSessions(conn: ServerConnection, directory: String? = null): List<Session> {
         return httpClient.get("${conn.baseUrl}/session") {
-            conn.authHeader?.let { header("Authorization", it) }
+            conn.applyTo(this)
             directory?.let { header("x-opencode-directory", it) }
             parameter("roots", "true")
         }.body()
@@ -175,7 +199,7 @@ class OpenCodeApi @Inject constructor(
         directory: String? = null,
     ): Map<String, SessionStatus> {
         val payload: JsonObject = httpClient.get("${conn.baseUrl}/session/status") {
-            conn.authHeader?.let { header("Authorization", it) }
+            conn.applyTo(this)
             directory?.let { header("x-opencode-directory", it) }
         }.body()
         return payload.mapValues { (_, value) ->
@@ -194,7 +218,7 @@ class OpenCodeApi @Inject constructor(
 
     suspend fun getSession(conn: ServerConnection, sessionId: String, directory: String? = null): Session {
         return httpClient.get("${conn.baseUrl}/session/$sessionId") {
-            conn.authHeader?.let { header("Authorization", it) }
+            conn.applyTo(this)
             directory?.let { header("x-opencode-directory", it) }
         }.body()
     }
@@ -205,7 +229,7 @@ class OpenCodeApi @Inject constructor(
         directory: String? = null,
     ): List<Session> {
         return httpClient.get("${conn.baseUrl}/session/$sessionId/children") {
-            conn.authHeader?.let { header("Authorization", it) }
+            conn.applyTo(this)
             directory?.let { header("x-opencode-directory", it) }
         }.body()
     }
@@ -213,7 +237,7 @@ class OpenCodeApi @Inject constructor(
     /** Returns session info as raw JSON string (for export without re-serialization). */
     suspend fun getSessionRaw(conn: ServerConnection, sessionId: String): String {
         return httpClient.get("${conn.baseUrl}/session/$sessionId") {
-            conn.authHeader?.let { header("Authorization", it) }
+            conn.applyTo(this)
         }.bodyAsText()
     }
 
@@ -223,7 +247,7 @@ class OpenCodeApi @Inject constructor(
             parentId?.let { put("parentID", it) }
         }
         return httpClient.post("${conn.baseUrl}/session") {
-            conn.authHeader?.let { header("Authorization", it) }
+            conn.applyTo(this)
             directory?.let { header("x-opencode-directory", it) }
             contentType(ContentType.Application.Json)
             setBody(body)
@@ -232,14 +256,14 @@ class OpenCodeApi @Inject constructor(
 
     suspend fun deleteSession(conn: ServerConnection, sessionId: String): Boolean {
         val response = httpClient.delete("${conn.baseUrl}/session/$sessionId") {
-            conn.authHeader?.let { header("Authorization", it) }
+            conn.applyTo(this)
         }
         return response.status.isSuccess()
     }
 
     suspend fun updateSession(conn: ServerConnection, sessionId: String, title: String): Session {
         return httpClient.patch("${conn.baseUrl}/session/$sessionId") {
-            conn.authHeader?.let { header("Authorization", it) }
+            conn.applyTo(this)
             contentType(ContentType.Application.Json)
             setBody(mapOf("title" to title))
         }.body()
@@ -247,7 +271,7 @@ class OpenCodeApi @Inject constructor(
 
     suspend fun abortSession(conn: ServerConnection, sessionId: String, directory: String? = null): Boolean {
         val response = httpClient.post("${conn.baseUrl}/session/$sessionId/abort") {
-            conn.authHeader?.let { header("Authorization", it) }
+            conn.applyTo(this)
             directory?.let { header("x-opencode-directory", it) }
         }
         return response.status.isSuccess()
@@ -255,7 +279,7 @@ class OpenCodeApi @Inject constructor(
 
     suspend fun getSessionDiff(conn: ServerConnection, sessionId: String): List<FileDiff> {
         return httpClient.get("${conn.baseUrl}/session/$sessionId/diff") {
-            conn.authHeader?.let { header("Authorization", it) }
+            conn.applyTo(this)
         }.body()
     }
 
@@ -265,7 +289,7 @@ class OpenCodeApi @Inject constructor(
      */
     suspend fun shareSession(conn: ServerConnection, sessionId: String): Session {
         return httpClient.post("${conn.baseUrl}/session/$sessionId/share") {
-            conn.authHeader?.let { header("Authorization", it) }
+            conn.applyTo(this)
         }.body()
     }
 
@@ -275,7 +299,7 @@ class OpenCodeApi @Inject constructor(
      */
     suspend fun unshareSession(conn: ServerConnection, sessionId: String): Session {
         return httpClient.delete("${conn.baseUrl}/session/$sessionId/share") {
-            conn.authHeader?.let { header("Authorization", it) }
+            conn.applyTo(this)
         }.body()
     }
 
@@ -290,7 +314,7 @@ class OpenCodeApi @Inject constructor(
         modelId: String
     ): Boolean {
         val response = httpClient.post("${conn.baseUrl}/session/$sessionId/summarize") {
-            conn.authHeader?.let { header("Authorization", it) }
+            conn.applyTo(this)
             contentType(ContentType.Application.Json)
             setBody(mapOf("providerID" to providerId, "modelID" to modelId))
         }
@@ -303,7 +327,7 @@ class OpenCodeApi @Inject constructor(
      */
     suspend fun revertSession(conn: ServerConnection, sessionId: String, messageId: String): Session {
         return httpClient.post("${conn.baseUrl}/session/$sessionId/revert") {
-            conn.authHeader?.let { header("Authorization", it) }
+            conn.applyTo(this)
             contentType(ContentType.Application.Json)
             setBody(mapOf("messageID" to messageId))
         }.body()
@@ -315,7 +339,7 @@ class OpenCodeApi @Inject constructor(
      */
     suspend fun unrevertSession(conn: ServerConnection, sessionId: String): Session {
         return httpClient.post("${conn.baseUrl}/session/$sessionId/unrevert") {
-            conn.authHeader?.let { header("Authorization", it) }
+            conn.applyTo(this)
         }.body()
     }
 
@@ -328,7 +352,7 @@ class OpenCodeApi @Inject constructor(
             messageId?.let { put("messageID", it) }
         }
         return httpClient.post("${conn.baseUrl}/session/$sessionId/fork") {
-            conn.authHeader?.let { header("Authorization", it) }
+            conn.applyTo(this)
             contentType(ContentType.Application.Json)
             setBody(body)
         }.body()
@@ -347,7 +371,7 @@ class OpenCodeApi @Inject constructor(
         directory: String? = null
     ): Boolean {
         val response = httpClient.post("${conn.baseUrl}/session/$sessionId/command") {
-            conn.authHeader?.let { header("Authorization", it) }
+            conn.applyTo(this)
             directory?.let { header("x-opencode-directory", it) }
             contentType(ContentType.Application.Json)
             setBody(mapOf("command" to command, "arguments" to arguments))
@@ -368,7 +392,7 @@ class OpenCodeApi @Inject constructor(
         directory: String? = null
     ): Boolean {
         val response = httpClient.post("${conn.baseUrl}/session/$sessionId/shell") {
-            conn.authHeader?.let { header("Authorization", it) }
+            conn.applyTo(this)
             directory?.let { header("x-opencode-directory", it) }
             contentType(ContentType.Application.Json)
             setBody(
@@ -392,7 +416,7 @@ class OpenCodeApi @Inject constructor(
             Log.d("OpenCodeApi", "createPty: request")
         }
         val response = httpClient.post("${conn.baseUrl}/pty") {
-            conn.authHeader?.let { header("Authorization", it) }
+            conn.applyTo(this)
             directory?.let { header("x-opencode-directory", it) }
             contentType(ContentType.Application.Json)
             setBody(PtyCreateRequest(title = title, cwd = cwd))
@@ -466,7 +490,7 @@ class OpenCodeApi @Inject constructor(
 
     suspend fun removePty(conn: ServerConnection, ptyId: String): Boolean {
         val response = httpClient.delete("${conn.baseUrl}/pty/$ptyId") {
-            conn.authHeader?.let { header("Authorization", it) }
+            conn.applyTo(this)
         }
         return response.status.isSuccess()
     }
@@ -483,7 +507,7 @@ class OpenCodeApi @Inject constructor(
             Log.d("OpenCodeApi", "updatePtySize: ${cols}x$rows")
         }
         val response = httpClient.put("${conn.baseUrl}/pty/$ptyId") {
-            conn.authHeader?.let { header("Authorization", it) }
+            conn.applyTo(this)
             directory?.let { header("x-opencode-directory", it) }
             contentType(ContentType.Application.Json)
             setBody(body)
@@ -508,7 +532,7 @@ class OpenCodeApi @Inject constructor(
         val session = httpClient.webSocketSession {
             method = HttpMethod.Get
             url("$wsBase/pty/$ptyId/connect?cursor=$cursor")
-            conn.authHeader?.let { header("Authorization", it) }
+            conn.applyTo(this)
             directory?.let { header("x-opencode-directory", it) }
         }
         return PtySocket(session)
@@ -547,7 +571,7 @@ class OpenCodeApi @Inject constructor(
         maxResponseBytes: Long,
     ): MessagePage {
         val response = httpClient.get("${conn.baseUrl}/session/$sessionId/message") {
-            conn.authHeader?.let { header("Authorization", it) }
+            conn.applyTo(this)
             limit?.let { parameter("limit", it) }
             before?.let { parameter("before", it) }
             directory?.let { header("x-opencode-directory", it) }
@@ -609,7 +633,7 @@ class OpenCodeApi @Inject constructor(
     /** Returns messages as raw JSON string (for export without re-serialization). */
     suspend fun listMessagesRaw(conn: ServerConnection, sessionId: String): String {
         return httpClient.get("${conn.baseUrl}/session/$sessionId/message") {
-            conn.authHeader?.let { header("Authorization", it) }
+            conn.applyTo(this)
         }.bodyAsText()
     }
 
@@ -629,7 +653,7 @@ class OpenCodeApi @Inject constructor(
         var bytesWritten = 0L
         // Write session info (small, safe to hold in memory)
         val sessionJson = httpClient.get("${conn.baseUrl}/session/$sessionId") {
-            conn.authHeader?.let { header("Authorization", it) }
+            conn.applyTo(this)
         }.bodyAsText()
         val header = """{"info":$sessionJson,"messages":"""
         outputStream.write(header.toByteArray())
@@ -644,7 +668,7 @@ class OpenCodeApi @Inject constructor(
             .build()
         val request = okhttp3.Request.Builder()
             .url("${conn.baseUrl}/session/$sessionId/message")
-            .apply { conn.authHeader?.let { addHeader("Authorization", it) } }
+            .apply { conn.applyTo(this) }
             .build()
 
         kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
@@ -670,7 +694,7 @@ class OpenCodeApi @Inject constructor(
 
     suspend fun getMessage(conn: ServerConnection, sessionId: String, messageId: String): MessageWithParts {
         return httpClient.get("${conn.baseUrl}/session/$sessionId/message/$messageId") {
-            conn.authHeader?.let { header("Authorization", it) }
+            conn.applyTo(this)
         }.body()
     }
 
@@ -691,7 +715,7 @@ class OpenCodeApi @Inject constructor(
         directory: String? = null
     ) {
         val response = httpClient.post("${conn.baseUrl}/session/$sessionId/prompt_async") {
-            conn.authHeader?.let { header("Authorization", it) }
+            conn.applyTo(this)
             directory?.let { header("x-opencode-directory", it) }
             contentType(ContentType.Application.Json)
             setBody(PromptRequest(
@@ -715,7 +739,7 @@ class OpenCodeApi @Inject constructor(
         workspaceId: String? = null,
     ) {
         val response = httpClient.post("${conn.baseUrl}/api/session/$sessionId/agent") {
-            conn.authHeader?.let { header("Authorization", it) }
+            conn.applyTo(this)
             directory?.let { parameter("directory", it) }
             workspaceId?.let { parameter("workspace", it) }
             contentType(ContentType.Application.Json)
@@ -733,7 +757,7 @@ class OpenCodeApi @Inject constructor(
         workspaceId: String? = null,
     ) {
         val response = httpClient.post("${conn.baseUrl}/api/session/$sessionId/model") {
-            conn.authHeader?.let { header("Authorization", it) }
+            conn.applyTo(this)
             directory?.let { parameter("directory", it) }
             workspaceId?.let { parameter("workspace", it) }
             contentType(ContentType.Application.Json)
@@ -750,7 +774,7 @@ class OpenCodeApi @Inject constructor(
         workspaceId: String? = null,
     ): V2AdmittedPrompt {
         val response = httpClient.post("${conn.baseUrl}/api/session/$sessionId/prompt") {
-            conn.authHeader?.let { header("Authorization", it) }
+            conn.applyTo(this)
             directory?.let { parameter("directory", it) }
             workspaceId?.let { parameter("workspace", it) }
             contentType(ContentType.Application.Json)
@@ -779,7 +803,7 @@ class OpenCodeApi @Inject constructor(
             message?.let { put("message", it) }
         }
         val result = httpClient.post("${conn.baseUrl}/permission/$requestId/reply") {
-            conn.authHeader?.let { header("Authorization", it) }
+            conn.applyTo(this)
             directory?.let { header("x-opencode-directory", it) }
             contentType(ContentType.Application.Json)
             setBody(body)
@@ -793,7 +817,7 @@ class OpenCodeApi @Inject constructor(
      */
     suspend fun listPendingPermissions(conn: ServerConnection, directory: String? = null): List<PermissionRequest> {
         return httpClient.get("${conn.baseUrl}/permission") {
-            conn.authHeader?.let { header("Authorization", it) }
+            conn.applyTo(this)
             directory?.let { header("x-opencode-directory", it) }
         }.body()
     }
@@ -802,7 +826,7 @@ class OpenCodeApi @Inject constructor(
 
     suspend fun getMcpStatus(conn: ServerConnection): Map<String, McpStatus> {
         val response = httpClient.get("${conn.baseUrl}/mcp") {
-            conn.authHeader?.let { header("Authorization", it) }
+            conn.applyTo(this)
         }
         if (!response.status.isSuccess()) throw RuntimeException("MCP status failed: ${response.status}")
         return response.body()
@@ -821,7 +845,7 @@ class OpenCodeApi @Inject constructor(
     ): Boolean {
         val action = if (connect) "connect" else "disconnect"
         val response = httpClient.post("${conn.baseUrl}/mcp/${name.encodeURLPathPart()}/$action") {
-            conn.authHeader?.let { header("Authorization", it) }
+            conn.applyTo(this)
         }
         if (!response.status.isSuccess()) throw RuntimeException("MCP $action failed: ${response.status}")
         return response.body()
@@ -829,7 +853,7 @@ class OpenCodeApi @Inject constructor(
 
     suspend fun startMcpAuth(conn: ServerConnection, name: String): McpAuthStart {
         val response = httpClient.post("${conn.baseUrl}/mcp/${name.encodeURLPathPart()}/auth") {
-            conn.authHeader?.let { header("Authorization", it) }
+            conn.applyTo(this)
         }
         if (!response.status.isSuccess()) throw RuntimeException("MCP authentication failed: ${response.status}")
         return response.body()
@@ -851,7 +875,7 @@ class OpenCodeApi @Inject constructor(
         val url = "${conn.baseUrl}/question/$requestId/reply"
         val bodyJson = json.encodeToString(QuestionReplyBody.serializer(), QuestionReplyBody(answers = answers))
         val result = httpClient.post(url) {
-            conn.authHeader?.let { header("Authorization", it) }
+            conn.applyTo(this)
             directory?.let { header("x-opencode-directory", it) }
             setBody(io.ktor.http.content.TextContent(bodyJson, ContentType.Application.Json))
         }
@@ -873,7 +897,7 @@ class OpenCodeApi @Inject constructor(
     ): Boolean {
         val url = "${conn.baseUrl}/question/$requestId/reject"
         val result = httpClient.post(url) {
-            conn.authHeader?.let { header("Authorization", it) }
+            conn.applyTo(this)
             directory?.let { header("x-opencode-directory", it) }
         }
         Log.i(TAG, "Question reject: request=$requestId status=${result.status.value}")
@@ -886,7 +910,7 @@ class OpenCodeApi @Inject constructor(
      */
     suspend fun listPendingQuestions(conn: ServerConnection, directory: String? = null): List<QuestionRequest> {
         val response = httpClient.get("${conn.baseUrl}/question") {
-            conn.authHeader?.let { header("Authorization", it) }
+            conn.applyTo(this)
             directory?.let { header("x-opencode-directory", it) }
         }
         Log.i(TAG, "Pending questions request: status=${response.status.value}")
@@ -901,7 +925,7 @@ class OpenCodeApi @Inject constructor(
      */
     suspend fun getProviders(conn: ServerConnection): ProvidersResponse {
         return httpClient.get("${conn.baseUrl}/config/providers") {
-            conn.authHeader?.let { header("Authorization", it) }
+            conn.applyTo(this)
         }.body()
     }
 
@@ -911,7 +935,7 @@ class OpenCodeApi @Inject constructor(
      */
     suspend fun listProviderCatalog(conn: ServerConnection): ProviderCatalogResponse {
         return httpClient.get("${conn.baseUrl}/provider") {
-            conn.authHeader?.let { header("Authorization", it) }
+            conn.applyTo(this)
         }.body()
     }
 
@@ -921,7 +945,7 @@ class OpenCodeApi @Inject constructor(
      */
     suspend fun getProviderAuthMethods(conn: ServerConnection): Map<String, List<ProviderAuthMethod>> {
         return httpClient.get("${conn.baseUrl}/provider/auth") {
-            conn.authHeader?.let { header("Authorization", it) }
+            conn.applyTo(this)
         }.body()
     }
 
@@ -935,7 +959,7 @@ class OpenCodeApi @Inject constructor(
         methodIndex: Int
     ): ProviderOauthAuthorization? {
         val response = httpClient.post("${conn.baseUrl}/provider/$providerId/oauth/authorize") {
-            conn.authHeader?.let { header("Authorization", it) }
+            conn.applyTo(this)
             contentType(ContentType.Application.Json)
             setBody(ProviderOauthAuthorizeRequest(method = methodIndex))
         }
@@ -975,7 +999,7 @@ class OpenCodeApi @Inject constructor(
             Log.d(TAG, "completeProviderOauth: POST /provider/$providerId/oauth/callback method=$methodIndex hasCode=${code != null}")
         }
         val response = httpClient.post("${conn.baseUrl}/provider/$providerId/oauth/callback") {
-            conn.authHeader?.let { header("Authorization", it) }
+            conn.applyTo(this)
             contentType(ContentType.Application.Json)
             setBody(body)
         }
@@ -996,7 +1020,7 @@ class OpenCodeApi @Inject constructor(
      */
     suspend fun setProviderApiKey(conn: ServerConnection, providerId: String, apiKey: String): Boolean {
         val response = httpClient.put("${conn.baseUrl}/auth/$providerId") {
-            conn.authHeader?.let { header("Authorization", it) }
+            conn.applyTo(this)
             contentType(ContentType.Application.Json)
             setBody(mapOf("type" to "api", "key" to apiKey))
         }
@@ -1010,7 +1034,7 @@ class OpenCodeApi @Inject constructor(
     suspend fun removeProviderAuth(conn: ServerConnection, providerId: String): Boolean {
         if (BuildConfig.DEBUG) Log.d(TAG, "removeProviderAuth: request")
         val response = httpClient.delete("${conn.baseUrl}/auth/$providerId") {
-            conn.authHeader?.let { header("Authorization", it) }
+            conn.applyTo(this)
         }
         if (BuildConfig.DEBUG) {
             Log.d(TAG, "removeProviderAuth: status=${response.status}")
@@ -1024,7 +1048,7 @@ class OpenCodeApi @Inject constructor(
      */
     suspend fun getConfig(conn: ServerConnection): ServerConfigResponse {
         return httpClient.get("${conn.baseUrl}/config") {
-            conn.authHeader?.let { header("Authorization", it) }
+            conn.applyTo(this)
         }.body()
     }
 
@@ -1034,7 +1058,7 @@ class OpenCodeApi @Inject constructor(
      */
     suspend fun getGlobalConfig(conn: ServerConnection): ServerConfigResponse {
         return httpClient.get("${conn.baseUrl}/global/config") {
-            conn.authHeader?.let { header("Authorization", it) }
+            conn.applyTo(this)
         }.body()
     }
 
@@ -1044,7 +1068,7 @@ class OpenCodeApi @Inject constructor(
      */
     suspend fun updateConfig(conn: ServerConnection, patch: ServerConfigPatch): ServerConfigResponse {
         return httpClient.patch("${conn.baseUrl}/config") {
-            conn.authHeader?.let { header("Authorization", it) }
+            conn.applyTo(this)
             contentType(ContentType.Application.Json)
             setBody(patch)
         }.body()
@@ -1056,7 +1080,7 @@ class OpenCodeApi @Inject constructor(
      */
     suspend fun updateGlobalConfig(conn: ServerConnection, patch: ServerConfigPatch): ServerConfigResponse {
         return httpClient.patch("${conn.baseUrl}/global/config") {
-            conn.authHeader?.let { header("Authorization", it) }
+            conn.applyTo(this)
             contentType(ContentType.Application.Json)
             setBody(patch)
         }.body()
@@ -1068,7 +1092,7 @@ class OpenCodeApi @Inject constructor(
      */
     suspend fun disposeGlobal(conn: ServerConnection): Boolean {
         val response = httpClient.post("${conn.baseUrl}/global/dispose") {
-            conn.authHeader?.let { header("Authorization", it) }
+            conn.applyTo(this)
         }
         return response.status.isSuccess()
     }
@@ -1081,7 +1105,7 @@ class OpenCodeApi @Inject constructor(
      */
     suspend fun listCommands(conn: ServerConnection): List<CommandInfo> {
         return httpClient.get("${conn.baseUrl}/command") {
-            conn.authHeader?.let { header("Authorization", it) }
+            conn.applyTo(this)
         }.body()
     }
 
@@ -1089,14 +1113,14 @@ class OpenCodeApi @Inject constructor(
 
     suspend fun searchText(conn: ServerConnection, pattern: String): List<SearchMatch> {
         return httpClient.get("${conn.baseUrl}/find") {
-            conn.authHeader?.let { header("Authorization", it) }
+            conn.applyTo(this)
             parameter("pattern", pattern)
         }.body()
     }
 
     suspend fun findFiles(conn: ServerConnection, query: String, type: String? = null, directory: String? = null, limit: Int? = null, dirs: String? = null): List<String> {
         return httpClient.get("${conn.baseUrl}/find/file") {
-            conn.authHeader?.let { header("Authorization", it) }
+            conn.applyTo(this)
             directory?.let {
                 parameter("directory", it)
                 header("x-opencode-directory", it)
@@ -1110,7 +1134,7 @@ class OpenCodeApi @Inject constructor(
 
     suspend fun readFile(conn: ServerConnection, path: String, directory: String? = null): FileContent {
         return httpClient.get("${conn.baseUrl}/file/content") {
-            conn.authHeader?.let { header("Authorization", it) }
+            conn.applyTo(this)
             directory?.let {
                 parameter("directory", it)
                 header("x-opencode-directory", it)
@@ -1121,7 +1145,7 @@ class OpenCodeApi @Inject constructor(
 
     suspend fun listDirectory(conn: ServerConnection, path: String = "", directory: String? = null): List<FileNode> {
         return httpClient.get("${conn.baseUrl}/file") {
-            conn.authHeader?.let { header("Authorization", it) }
+            conn.applyTo(this)
             directory?.let {
                 parameter("directory", it)
                 header("x-opencode-directory", it)

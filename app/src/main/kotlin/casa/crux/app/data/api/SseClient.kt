@@ -72,7 +72,7 @@ class SseClient @Inject constructor(
         Log.i(TAG, "Connecting to global SSE (auth=${conn.authHeader != null})")
 
         val statement = httpClient.prepareGet(sseUrl) {
-            conn.authHeader?.let { header("Authorization", it) }
+            conn.applyTo(this)
             header("Accept", "text/event-stream")
             directory?.let { header("x-opencode-directory", it) }
 

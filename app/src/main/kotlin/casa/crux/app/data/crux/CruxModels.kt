@@ -107,6 +107,13 @@ data class CruxConnection(
     val username: String = "opencode",
     val password: String? = null,
     val appUrl: String? = null,
+    /**
+     * Only a Codespaces deployment sends these: its forwarded port is private, so reaching it
+     * needs the user's GitHub token as well as Basic Auth. The token is short-lived and the
+     * endpoint resolves a fresh one on every call, so it is never persisted.
+     */
+    val githubToken: String? = null,
+    val needsToken: Boolean = false,
 )
 
 @Serializable

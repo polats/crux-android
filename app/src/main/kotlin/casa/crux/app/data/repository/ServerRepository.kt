@@ -81,6 +81,7 @@ internal fun upsertLocalServerConfig(
     username: String,
     password: String?,
     defaultName: String,
+    cruxDeploymentId: String? = null,
     idGenerator: () -> String = { UUID.randomUUID().toString() },
 ): Pair<List<ServerConfig>, LocalServerUpsertResult> {
     val normalized = normalizeServerUrl(localUrl)
@@ -93,6 +94,7 @@ internal fun upsertLocalServerConfig(
             password = password,
             name = defaultName,
             autoConnect = false,
+            cruxDeploymentId = cruxDeploymentId,
         )
         return (current + server) to LocalServerUpsertResult(server, emptyList())
     }
@@ -105,6 +107,9 @@ internal fun upsertLocalServerConfig(
         autoConnect = matches.any { it.autoConnect },
         lastConnected = matches.mapNotNull { it.lastConnected }.maxOrNull(),
         isHealthy = matches.any { it.isHealthy },
+        // Keep an existing link if this upsert did not bring one, so re-adding a server by
+        // hand does not quietly sever it from its deployment.
+        cruxDeploymentId = cruxDeploymentId ?: matches.firstNotNullOfOrNull { it.cruxDeploymentId },
     )
     val duplicateIds = matches.drop(1).map(ServerConfig::id)
     val updated = current.mapNotNull { server ->
@@ -267,6 +272,7 @@ class ServerRepository @Inject constructor(
         username: String,
         password: String?,
         defaultName: String,
+        cruxDeploymentId: String? = null,
     ): LocalServerUpsertResult {
         lateinit var result: LocalServerUpsertResult
         dataStore.edit { preferences ->
@@ -276,6 +282,7 @@ class ServerRepository @Inject constructor(
                 username = username,
                 password = password,
                 defaultName = defaultName,
+                cruxDeploymentId = cruxDeploymentId,
             )
             preferences[serversKey] = json.encodeToString(servers)
             result = upsert

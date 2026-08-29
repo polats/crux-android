@@ -14,7 +14,17 @@ data class ServerConfig(
     val name: String? = null, // User-friendly name
     val autoConnect: Boolean = false,
     val lastConnected: Long? = null,
-    val isHealthy: Boolean = false
+    val isHealthy: Boolean = false,
+    /**
+     * The crux.casa deployment this server came from, when it came from one.
+     *
+     * Only Codespaces-backed servers actually need it: their forwarded port is private, so
+     * every request carries a GitHub token as well as Basic Auth, and the token expires. It is
+     * fetched on demand from `/api/deployments/{id}/connection` and held in memory — a secret
+     * with an eight-hour life has no business in a DataStore-persisted, sync-exported model,
+     * which is why only the id is stored here.
+     */
+    val cruxDeploymentId: String? = null
 ) {
     val displayName: String
         get() = name ?: url

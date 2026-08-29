@@ -1,6 +1,8 @@
 package casa.crux.app.di
 
 import android.content.Context
+import casa.crux.app.data.crux.CodespaceTokenInterceptor
+import casa.crux.app.data.crux.CodespaceTokens
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
@@ -40,7 +42,7 @@ object NetworkModule {
     
     @Provides
     @Singleton
-    fun provideHttpClient(json: Json): HttpClient = HttpClient(OkHttp) {
+    fun provideHttpClient(json: Json, codespaceTokens: CodespaceTokens): HttpClient = HttpClient(OkHttp) {
         install(ContentNegotiation) {
             json(json)
         }
@@ -71,6 +73,9 @@ object NetworkModule {
             config {
                 // OkHttp-specific: disable response body buffering for streaming
                 retryOnConnectionFailure(true)
+                // An application interceptor, so it sees the request after redirects have been
+                // followed — which is how a rejected codespace token is recognised at all.
+                addInterceptor(CodespaceTokenInterceptor(codespaceTokens))
             }
         }
         

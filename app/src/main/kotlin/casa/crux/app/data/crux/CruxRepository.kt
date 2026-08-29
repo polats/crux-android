@@ -41,6 +41,7 @@ class CruxRepository @Inject constructor(
     private val api: CruxApi,
     private val json: Json,
     private val serverRepository: ServerRepository,
+    private val codespaceTokens: CodespaceTokens,
 ) {
     private val accountKey = stringPreferencesKey(ACCOUNT_KEY)
 
@@ -50,6 +51,24 @@ class CruxRepository @Inject constructor(
      * halfway through the token exchange.
      */
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    init {
+        // Set rather than injected: the token store is installed into the very HttpClient this
+        // repository's api is built on, so injecting the repository there would be a cycle.
+        codespaceTokens.refresher = { deploymentId ->
+            api.connection(requireToken(), deploymentId).githubToken
+        }
+        // The store is in memory, so it is empty after a restart while the servers it describes
+        // are not. Re-registering them with a null token makes the first request to one fetch
+        // a fresh token instead of being bounced to a login page.
+        scope.launch {
+            serverRepository.servers.collect { servers ->
+                servers.forEach { server ->
+                    server.cruxDeploymentId?.let { codespaceTokens.rememberDeployment(server.url, it) }
+                }
+            }
+        }
+    }
 
     /**
      * Whether this device holds a token.
@@ -201,11 +220,21 @@ class CruxRepository @Inject constructor(
         val connection = api.connection(requireToken(), deployment.id)
         val url = connection.appUrl ?: deployment.appUrl
             ?: throw CruxApiException("This deployment has no address yet")
+        // A codespace's port is private, so every later request to this host needs a GitHub
+        // token. Recorded before the server is saved, so the first health check already carries
+        // one rather than being bounced to a login page.
+        val githubToken = connection.githubToken
+        if (connection.needsToken && githubToken != null) {
+            codespaceTokens.remember(url, deployment.id, githubToken)
+        } else if (connection.needsToken) {
+            codespaceTokens.rememberDeployment(url, deployment.id)
+        }
         val result = serverRepository.upsertLocalServer(
             url = url,
             username = connection.username,
             password = connection.password,
             defaultName = deployment.displayName,
+            cruxDeploymentId = deployment.id.takeIf { connection.needsToken },
         )
         result.removedServerIds.forEach { Log.i(TAG, "Replaced a stale entry for the same address") }
         return result.server
