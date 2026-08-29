@@ -63,8 +63,35 @@ class CruxApi @Inject constructor(
 
     // ------------------------------------------------------------------ auth
 
-    fun authorizeUrl(provider: String, challenge: String): String =
-        "${url("/auth/native/login")}?provider=$provider&challenge=$challenge&method=S256"
+    /**
+     * What a sign-in is for. The server used to infer this from whether the browser held a
+     * session cookie, which meant signing in after a sign-out silently linked the new
+     * provider to the old account instead of switching to it.
+     */
+    fun authorizeUrl(provider: String, challenge: String, intent: CruxIntent, ticket: String? = null): String =
+        buildString {
+            append(url("/auth/native/login"))
+            append("?provider=").append(provider)
+            append("&challenge=").append(challenge)
+            append("&method=S256")
+            append("&intent=").append(intent.wire)
+            if (ticket != null) append("&ticket=").append(java.net.URLEncoder.encode(ticket, "UTF-8"))
+        }
+
+    suspend fun revoke(token: String) {
+        client.post(url("/auth/native/revoke")) { bearer(token) }.decodeOrThrow()
+    }
+
+    /** Proves the caller is already signed in, before the browser is involved. */
+    suspend fun linkTicket(token: String): String {
+        val text = client.post(url("/auth/native/link-ticket")) { bearer(token) }.decodeOrThrow()
+        return json.parseToJsonElement(text).jsonObject["ticket"]?.jsonPrimitive?.content
+            ?: throw CruxApiException("Crux did not return a link ticket")
+    }
+
+    suspend fun unlinkGithub(token: String) {
+        client.delete(url("/api/github")) { bearer(token) }.decodeOrThrow()
+    }
 
     suspend fun exchangeCode(code: String, verifier: String, deviceLabel: String): CruxTokenResponse {
         val response = client.post(url("/auth/native/token")) {

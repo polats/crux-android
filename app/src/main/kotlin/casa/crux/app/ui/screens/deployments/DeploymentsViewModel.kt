@@ -7,6 +7,8 @@ import casa.crux.app.data.crux.CruxAccount
 import casa.crux.app.data.crux.CruxCreateRequest
 import casa.crux.app.data.crux.CruxDeployment
 import casa.crux.app.data.crux.CruxDeploymentStatus
+import casa.crux.app.data.crux.CruxIdentity
+import casa.crux.app.data.crux.CruxIntent
 import casa.crux.app.data.crux.CruxRepository
 import casa.crux.app.data.crux.CruxTemplate
 import casa.crux.app.data.crux.CruxUnauthorizedException
@@ -38,6 +40,9 @@ data class DeploymentsUiState(
     val showCreateDialog: Boolean = false,
     /** Providers the server actually has configured; empty until we have asked. */
     val availableProviders: List<String> = emptyList(),
+    /** Explains a login that changed which account you are in, as the dashboard does. */
+    val notice: String? = null,
+    val showAccountSheet: Boolean = false,
 )
 
 @HiltViewModel
@@ -110,12 +115,33 @@ class DeploymentsViewModel @Inject constructor(
         }
     }
 
-    fun signIn(provider: String) {
+    fun signIn(provider: String, intent: CruxIntent = CruxIntent.SIGN_IN) {
         viewModelScope.launch {
             try {
-                _authorizationUrls.emit(repository.beginSignIn(provider))
+                _authorizationUrls.emit(repository.beginSignIn(provider, intent))
             } catch (e: Exception) {
                 _uiState.update { it.copy(error = e.message ?: "Could not start sign-in") }
+            }
+        }
+    }
+
+    /** Attach another provider to the account already signed in here. */
+    fun linkProvider(provider: String) = signIn(provider, CruxIntent.LINK)
+
+    /** Sign in as somebody else: clears the browser session and re-prompts the provider. */
+    fun switchAccount(provider: String) = signIn(provider, CruxIntent.SWITCH)
+
+    fun showAccountSheet(show: Boolean) = _uiState.update { it.copy(showAccountSheet = show, error = null) }
+
+    fun dismissNotice() = _uiState.update { it.copy(notice = null) }
+
+    fun unlinkGithub() {
+        viewModelScope.launch {
+            try {
+                repository.unlinkGithub()
+                refresh()
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = e.message ?: "Could not disconnect GitHub") }
             }
         }
     }
@@ -125,7 +151,8 @@ class DeploymentsViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             try {
-                repository.completeSignIn(code)
+                val (_, outcome) = repository.completeSignIn(code)
+                _uiState.update { it.copy(notice = outcomeNotice(outcome)) }
                 refresh()
             } catch (e: Exception) {
                 Log.e(TAG, "Sign-in failed", e)
@@ -136,9 +163,11 @@ class DeploymentsViewModel @Inject constructor(
 
     fun signOut() {
         viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
             repository.signOut()
             pollJob?.cancel()
             _uiState.value = DeploymentsUiState(signedIn = false, isLoading = false)
+            refresh()
         }
     }
 
@@ -269,6 +298,36 @@ internal fun orderDeployments(deployments: List<CruxDeployment>): List<CruxDeplo
         compareByDescending<CruxDeployment> { it.status.isPending }
             .thenByDescending { it.createdAt ?: "" }
     )
+
+/**
+ * Explains a login that moved you between accounts. Saying nothing is what made the flow
+ * feel arbitrary — the account silently changed and the UI never mentioned it.
+ */
+internal fun outcomeNotice(outcome: String?): String? = when (outcome) {
+    "switch" -> "That provider account belongs to a different Crux account, so you are now " +
+        "signed into that one. Anything linked to your previous account stayed there."
+    "absorb" -> "That provider account belongs to another Crux account, so your links were " +
+        "moved into it. Nothing was lost."
+    "link" -> "Connected to your existing Crux account."
+    else -> null
+}
+
+/** Identities that can actually hold a deployment; GitHub signs you in but cannot host. */
+internal fun deployableIdentities(account: CruxAccount?): List<CruxIdentity> =
+    account?.identities.orEmpty().filter { it.provider != "github" }
+
+/** The deploy-target selector only earns its place when there is a choice to make. */
+internal fun showsDeployTarget(account: CruxAccount?): Boolean =
+    deployableIdentities(account).size >= 2
+
+/**
+ * Providers worth offering to link: configured on the server, and not already linked. The
+ * app used to offer all three unconditionally, so "link" and "sign in" looked identical.
+ */
+internal fun linkableProviders(account: CruxAccount?): List<String> {
+    val linked = account?.identities.orEmpty().map { it.provider }.toSet()
+    return configuredProviders(account).filterNot { it in linked }
+}
 
 /** The configured providers, in a stable order the UI can render directly. */
 internal fun configuredProviders(account: CruxAccount?): List<String> =

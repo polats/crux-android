@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Cloud
@@ -103,8 +104,11 @@ fun DeploymentsScreen(
                         IconButton(onClick = { viewModel.showCreateDialog(true) }) {
                             Icon(Icons.Default.Add, contentDescription = stringResource(R.string.deployments_create))
                         }
-                        IconButton(onClick = viewModel::signOut) {
-                            Icon(Icons.Default.Logout, contentDescription = stringResource(R.string.deployments_sign_out))
+                        IconButton(onClick = { viewModel.showAccountSheet(true) }) {
+                            Icon(
+                                Icons.Default.AccountCircle,
+                                contentDescription = stringResource(R.string.deployments_account_open),
+                            )
                         }
                     }
                 },
@@ -132,6 +136,18 @@ fun DeploymentsScreen(
                 )
             }
         }
+    }
+
+    if (state.showAccountSheet) {
+        AccountSheet(
+            state = state,
+            onDismiss = { viewModel.showAccountSheet(false) },
+            onSwitchDeployTarget = viewModel::switchProvider,
+            onLink = { viewModel.showAccountSheet(false); viewModel.linkProvider(it) },
+            onSwitchAccount = { viewModel.showAccountSheet(false); viewModel.switchAccount(it) },
+            onUnlinkGithub = viewModel::unlinkGithub,
+            onSignOut = { viewModel.showAccountSheet(false); viewModel.signOut() },
+        )
     }
 
     if (state.showCreateDialog) {
@@ -217,6 +233,15 @@ private fun DeploymentList(
                         ),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            state.notice?.let { message ->
+                item(key = "notice") {
+                    Text(
+                        message,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
                     )
                 }
             }

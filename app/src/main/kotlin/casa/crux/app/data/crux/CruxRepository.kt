@@ -52,25 +52,42 @@ class CruxRepository @Inject constructor(
      * first: the callback arrives in a different process lifetime, and without it the code
      * cannot be exchanged.
      */
-    fun beginSignIn(provider: String): String {
+    suspend fun beginSignIn(provider: String, intent: CruxIntent = CruxIntent.SIGN_IN): String {
         val verifier = CruxPkce.newVerifier()
         secrets.put(LocalSyncSecretStore.SecretKey.CRUX_PKCE_VERIFIER, verifier)
-        return api.authorizeUrl(provider, CruxPkce.challengeOf(verifier))
+        // Linking must prove which account it is attaching to. That proof comes from this
+        // device's token, never from whatever session the system browser is holding.
+        val ticket = if (intent == CruxIntent.LINK) api.linkTicket(requireToken()) else null
+        return api.authorizeUrl(provider, CruxPkce.challengeOf(verifier), intent, ticket)
     }
 
-    suspend fun completeSignIn(code: String): CruxAccount {
+    /** Returns the outcome alongside the account, so a changed identity can be explained. */
+    suspend fun completeSignIn(code: String): Pair<CruxAccount, String?> {
         val verifier = secrets.get(LocalSyncSecretStore.SecretKey.CRUX_PKCE_VERIFIER)
             ?: throw CruxApiException("This sign-in did not start on this device")
         val issued = api.exchangeCode(code, verifier, deviceLabel())
         secrets.put(LocalSyncSecretStore.SecretKey.CRUX_PKCE_VERIFIER, null)
         secrets.put(LocalSyncSecretStore.SecretKey.CRUX_TOKEN, issued.token)
-        return refreshAccount()
+        return refreshAccount() to issued.outcome
     }
 
+    /**
+     * Revoke first, then forget. A token that is only forgotten locally stays valid on the
+     * server for anyone who has a copy of it.
+     */
     suspend fun signOut() {
+        token()?.let { existing ->
+            runCatching { api.revoke(existing) }
+                .onFailure { Log.w(TAG, "Could not revoke the token; clearing it locally anyway") }
+        }
         secrets.put(LocalSyncSecretStore.SecretKey.CRUX_TOKEN, null)
         secrets.put(LocalSyncSecretStore.SecretKey.CRUX_PKCE_VERIFIER, null)
         dataStore.edit { it.remove(accountKey) }
+    }
+
+    suspend fun unlinkGithub() {
+        api.unlinkGithub(requireToken())
+        refreshAccount()
     }
 
     /** Which providers the server offers, readable without being signed in. */

@@ -6,6 +6,7 @@ import casa.crux.app.data.crux.CruxCreateRequest
 import casa.crux.app.data.crux.CruxDeployment
 import casa.crux.app.data.crux.CruxDeploymentStatus
 import casa.crux.app.data.crux.CruxIdentity
+import casa.crux.app.data.crux.CruxIntent
 import casa.crux.app.data.crux.CruxTemplate
 import casa.crux.app.data.crux.CruxWorkspace
 import org.junit.Assert.assertEquals
@@ -159,6 +160,67 @@ class DeploymentsLogicTest {
         // The provider error redirect carries no code.
         assertNull(cruxAuthCode("crux", "auth", null))
         assertNull(cruxAuthCode("crux", "auth", ""))
+    }
+
+    private fun accountWith(vararg providers: String, configured: List<String> = providers.toList()) =
+        CruxAccount(
+            identities = providers.map { CruxIdentity(provider = it, username = "polats") },
+            activeProvider = providers.firstOrNull { it != "github" },
+            activeIdentity = providers.firstOrNull { it != "github" }
+                ?.let { CruxIdentity(provider = it, username = "polats") },
+            providers = configured.associateWith { true },
+        )
+
+    @Test
+    fun `only unlinked configured providers can be connected`() {
+        // GitHub already linked, so offering to "connect GitHub" again is meaningless.
+        assertEquals(
+            listOf("railway"),
+            linkableProviders(accountWith("huggingface", "github", configured = listOf("huggingface", "railway", "github")))
+        )
+        assertTrue(linkableProviders(accountWith("huggingface", "railway", "github")).isEmpty())
+        assertTrue(linkableProviders(null).isEmpty())
+    }
+
+    @Test
+    fun `github is never a deploy target`() {
+        assertEquals(listOf("huggingface"), deployableIdentities(accountWith("huggingface", "github")).map { it.provider })
+        assertTrue(deployableIdentities(accountWith("github")).isEmpty())
+    }
+
+    @Test
+    fun `the deploy selector appears only when there is a choice`() {
+        assertFalse(showsDeployTarget(accountWith("huggingface")))
+        // GitHub does not count towards having a choice.
+        assertFalse(showsDeployTarget(accountWith("huggingface", "github")))
+        assertTrue(showsDeployTarget(accountWith("huggingface", "railway")))
+        assertFalse(showsDeployTarget(null))
+    }
+
+    @Test
+    fun `an account-changing login is explained rather than silent`() {
+        assertTrue(outcomeNotice("switch")!!.contains("different Crux account"))
+        assertTrue(outcomeNotice("absorb")!!.contains("Nothing was lost"))
+        assertTrue(outcomeNotice("link")!!.isNotBlank())
+        // A plain sign-in or signup needs no explanation.
+        assertNull(outcomeNotice("signin"))
+        assertNull(outcomeNotice("signup"))
+        assertNull(outcomeNotice(null))
+    }
+
+    @Test
+    fun `each intent sends the wire value the server expects`() {
+        assertEquals("signin", CruxIntent.SIGN_IN.wire)
+        assertEquals("link", CruxIntent.LINK.wire)
+        assertEquals("switch", CruxIntent.SWITCH.wire)
+    }
+
+    @Test
+    fun `provider labels are human readable`() {
+        assertEquals("Hugging Face", providerLabel("huggingface"))
+        assertEquals("Railway", providerLabel("railway"))
+        assertEquals("GitHub", providerLabel("github"))
+        assertEquals("unknown", providerLabel("unknown"))
     }
 
     @Test

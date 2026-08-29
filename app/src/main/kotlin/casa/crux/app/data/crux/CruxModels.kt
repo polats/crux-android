@@ -115,7 +115,21 @@ data class CruxTokenResponse(
     val user: CruxUser? = null,
     val userId: String? = null,
     val activeProvider: String? = null,
+    /** signup, signin, link, switch or absorb — what the login actually did. */
+    val outcome: String? = null,
 )
+
+/** Why the app is opening a browser, which the server can no longer guess. */
+enum class CruxIntent(val wire: String) {
+    /** A fresh sign-in. Clears any leftover browser session so it cannot become a link. */
+    SIGN_IN("signin"),
+
+    /** Attach another provider to the account already signed in here. Needs a ticket. */
+    LINK("link"),
+
+    /** Sign in as somebody else: clears the session and re-prompts the provider. */
+    SWITCH("switch"),
+}
 
 enum class CruxDeploymentStatus {
     QUEUED, PROVISIONING, RUNNING, ERROR, DELETING, DELETED, UNKNOWN;
