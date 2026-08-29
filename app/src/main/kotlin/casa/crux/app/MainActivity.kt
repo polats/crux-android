@@ -28,6 +28,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import casa.crux.app.data.repository.SettingsRepository
 import casa.crux.app.data.repository.ServerConnectionStateRepository
+import casa.crux.app.data.crux.cruxAuthCodeFrom
 import casa.crux.app.data.repository.ServerRepository
 import casa.crux.app.data.repository.EventReducer
 import casa.crux.app.domain.model.ServerConfig
@@ -108,6 +109,14 @@ class MainActivity : ComponentActivity() {
     private val _sharedAttachmentsFlow = MutableSharedFlow<List<Uri>>(replay = 1)
     val sharedAttachmentsFlow = _sharedAttachmentsFlow.asSharedFlow()
 
+    /**
+     * Authorization codes from the crux.casa sign-in returning through crux://auth/callback.
+     * replay=1 because the Custom Tab can deliver the callback before the Deployments screen
+     * is collecting again.
+     */
+    private val _cruxAuthCodeFlow = MutableSharedFlow<String>(replay = 1)
+    val cruxAuthCodeFlow = _cruxAuthCodeFlow.asSharedFlow()
+
     /** Language code applied via attachBaseContext for this Activity instance. */
     private var appliedLanguage: String = ""
 
@@ -168,6 +177,8 @@ class MainActivity : ComponentActivity() {
         handleSessionIntent(intent)
         // Handle attachments shared into the activity
         handleShareIntent(intent)
+        // Handle a returning crux.casa sign-in
+        handleCruxAuthIntent(intent)
         
         setContent {
             // Collect theme preference
@@ -206,6 +217,7 @@ class MainActivity : ComponentActivity() {
                     NavGraph(
                         deepLinkFlow = _deepLinkFlow,
                         sharedAttachmentsFlow = sharedAttachmentsFlow,
+                        cruxAuthCodeFlow = cruxAuthCodeFlow,
                         settingsRepository = settingsRepository,
                         serverRepository = serverRepository,
                         eventReducer = eventReducer,
@@ -227,6 +239,16 @@ class MainActivity : ComponentActivity() {
         handleSessionIntent(intent)
         // Handle attachments shared while the activity is already running
         handleShareIntent(intent)
+        // The usual path for the sign-in callback: singleTask routes it here, not onCreate.
+        handleCruxAuthIntent(intent)
+    }
+
+    private fun handleCruxAuthIntent(intent: Intent?) {
+        if (intent?.action != Intent.ACTION_VIEW) return
+        val code = cruxAuthCodeFrom(intent.data) ?: return
+        // Consume it, so a rotation or a later share intent cannot replay the redirect.
+        intent.data = null
+        lifecycleScope.launch { _cruxAuthCodeFlow.emit(code) }
     }
     
     private fun handleSessionIntent(intent: Intent?) {

@@ -44,6 +44,7 @@ import casa.crux.app.ui.screens.chat.ChatScreen
 import casa.crux.app.ui.screens.files.WorkspaceFilesScreen
 import casa.crux.app.ui.screens.home.HomeScreen
 import casa.crux.app.ui.screens.about.AboutScreen
+import casa.crux.app.ui.screens.deployments.DeploymentsScreen
 import casa.crux.app.ui.screens.sessions.SessionListScreen
 import casa.crux.app.ui.screens.sessions.CrossServerSessionsScreen
 import casa.crux.app.ui.screens.settings.SettingsScreen
@@ -152,6 +153,7 @@ internal fun buildSharePickerItems(
 fun NavGraph(
     deepLinkFlow: MutableSharedFlow<SessionDeepLink>,
     sharedAttachmentsFlow: SharedFlow<List<Uri>>,
+    cruxAuthCodeFlow: SharedFlow<String>,
     settingsRepository: SettingsRepository,
     serverRepository: ServerRepository,
     eventReducer: EventReducer,
@@ -409,6 +411,9 @@ fun NavGraph(
                 },
                 onNavigateToAbout = {
                     navController.navigate(Screen.About.route)
+                },
+                onNavigateToDeployments = {
+                    navController.navigate(Screen.Deployments.route)
                 }
             )
         }
@@ -559,6 +564,18 @@ fun NavGraph(
         }
 
         // ============ About Screen ============
+        composable(Screen.Deployments.route) {
+            DeploymentsScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onServerConnected = {
+                    // A connected deployment is an ordinary server from here on, so drop
+                    // back to the list that already knows how to open one.
+                    navController.popBackStack(Screen.Home.route, inclusive = false)
+                },
+                authCodeFlow = cruxAuthCodeFlow,
+            )
+        }
+
         composable(Screen.About.route) {
             AboutScreen(
                 onNavigateBack = {

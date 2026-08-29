@@ -131,6 +131,7 @@ fun HomeScreen(
     onNavigateToServerSettings: (serverUrl: String, username: String, password: String, serverName: String, serverId: String) -> Unit = { _, _, _, _, _ -> },
     onNavigateToSettings: () -> Unit = {},
     onNavigateToAbout: () -> Unit = {},
+    onNavigateToDeployments: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -218,6 +219,9 @@ fun HomeScreen(
                 actions = {
                     IconButton(onClick = { viewModel.showAddServerDialog() }) {
                         Icon(Icons.Default.Add, contentDescription = stringResource(R.string.home_add_server))
+                    }
+                    IconButton(onClick = onNavigateToDeployments) {
+                        Icon(Icons.Default.Cloud, contentDescription = stringResource(R.string.deployments_title))
                     }
                     IconButton(onClick = onNavigateToSettings) {
                         Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.settings_title))

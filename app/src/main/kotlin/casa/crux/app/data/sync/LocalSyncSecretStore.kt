@@ -61,6 +61,12 @@ class LocalSyncSecretStore @Inject constructor(
         GITHUB_TOKEN("github_token"),
         WEBDAV_PASSWORD("webdav_password"),
         SYNC_PASSPHRASE("sync_passphrase"),
+
+        /** The crux.casa bearer token. Kept here rather than in DataStore, which is plaintext. */
+        CRUX_TOKEN("crux_token"),
+
+        /** The in-flight PKCE verifier, held only between opening the Custom Tab and the callback. */
+        CRUX_PKCE_VERIFIER("crux_pkce_verifier"),
     }
 
     companion object {

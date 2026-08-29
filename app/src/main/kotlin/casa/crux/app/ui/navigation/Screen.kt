@@ -153,4 +153,5 @@ sealed class Screen(val route: String) {
     data object SyncSettings : Screen("sync_settings")
     data object Diagnostics : Screen("diagnostics")
     data object About : Screen("about")
+    data object Deployments : Screen("deployments")
 }

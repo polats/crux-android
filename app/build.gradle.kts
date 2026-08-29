@@ -138,6 +138,10 @@ dependencies {
     // WebView fallback (kept for legacy)
     implementation("androidx.webkit:webkit:1.11.0")
 
+    // Custom Tabs for the crux.casa sign-in, which must run in a real browser:
+    // providers reject an embedded WebView, and a Custom Tab shares the browser's session.
+    implementation("androidx.browser:browser:1.8.0")
+
     // DataStore for preferences
     implementation("androidx.datastore:datastore-preferences:1.1.1")
 
