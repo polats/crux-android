@@ -213,24 +213,28 @@ fun HomeScreen(
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.surface,
+        floatingActionButton = {
+            // Adding a server is a different kind of action from the navigation in the header,
+            // and the empty state's button disappears as soon as you have one server.
+            FloatingActionButton(onClick = { viewModel.showAddServerDialog() }) {
+                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.home_add_server))
+            }
+        },
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.home_title)) },
                 actions = {
-                    IconButton(onClick = { viewModel.showAddServerDialog() }) {
-                        Icon(Icons.Default.Add, contentDescription = stringResource(R.string.home_add_server))
-                    }
                     IconButton(onClick = onNavigateToDeployments) {
                         Icon(Icons.Default.Cloud, contentDescription = stringResource(R.string.deployments_title))
-                    }
-                    IconButton(onClick = onNavigateToSettings) {
-                        Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.settings_title))
                     }
                     IconButton(onClick = onNavigateToAccount) {
                         Icon(
                             Icons.Default.AccountCircle,
                             contentDescription = stringResource(R.string.deployments_account_title),
                         )
+                    }
+                    IconButton(onClick = onNavigateToSettings) {
+                        Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.settings_title))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(

@@ -26,7 +26,9 @@ data class AccountUiState(
     /** Null until the stored token has been read, so nothing flashes the wrong state. */
     val signedIn: Boolean? = null,
     val account: CruxAccount? = null,
-    val busy: Boolean = false,
+    /** Which row is mid-action, so only that row shows progress. */
+    val busyProvider: String? = null,
+    val signingOut: Boolean = false,
     val error: String? = null,
     val notice: String? = null,
     /** How many spaces each provider account still owns; blocks disconnecting it. */
@@ -38,7 +40,9 @@ data class AccountRow(
     val provider: String,
     val connected: Boolean,
     val username: String?,
-    /** Non-null when disconnecting is refused, and why. */
+    /** False for the last account left: there is nothing useful to offer, so offer nothing. */
+    val canDisconnect: Boolean,
+    /** Non-null when a disconnect is offered but refused, and why. */
     val blockedReason: Int?,
 )
 
@@ -75,9 +79,9 @@ class AccountViewModel @Inject constructor(
             repository.events.collect { event ->
                 when (event) {
                     is CruxSignInEvent.SignedIn ->
-                        _uiState.update { it.copy(busy = false, notice = outcomeNotice(event.outcome)) }
+                        _uiState.update { it.copy(busyProvider = null, notice = outcomeNotice(event.outcome)) }
                     is CruxSignInEvent.Failed ->
-                        _uiState.update { it.copy(busy = false, error = event.message) }
+                        _uiState.update { it.copy(busyProvider = null, error = event.message) }
                 }
             }
         }
@@ -106,35 +110,23 @@ class AccountViewModel @Inject constructor(
 
     fun disconnect(provider: String) {
         viewModelScope.launch {
-            _uiState.update { it.copy(busy = true, error = null, notice = null) }
+            _uiState.update { it.copy(busyProvider = provider, error = null, notice = null) }
             try {
                 repository.unlinkProvider(provider)
-                _uiState.update { it.copy(busy = false) }
+                _uiState.update { it.copy(busyProvider = null) }
             } catch (e: Exception) {
-                _uiState.update { it.copy(busy = false, error = e.message ?: "Could not disconnect") }
+                _uiState.update { it.copy(busyProvider = null, error = e.message ?: "Could not disconnect") }
             }
         }
     }
 
     private fun start(provider: String, intent: CruxIntent) {
         viewModelScope.launch {
-            _uiState.update { it.copy(busy = true, error = null, notice = null) }
+            _uiState.update { it.copy(busyProvider = provider, error = null, notice = null) }
             try {
                 _authorizationUrls.emit(repository.beginSignIn(provider, intent))
             } catch (e: Exception) {
-                _uiState.update { it.copy(busy = false, error = e.message ?: "Could not start sign-in") }
-            }
-        }
-    }
-
-    fun switchDeployTarget(provider: String) {
-        viewModelScope.launch {
-            _uiState.update { it.copy(busy = true, error = null) }
-            try {
-                repository.switchProvider(provider)
-                _uiState.update { it.copy(busy = false) }
-            } catch (e: Exception) {
-                _uiState.update { it.copy(busy = false, error = e.message ?: "Could not switch account") }
+                _uiState.update { it.copy(busyProvider = null, error = e.message ?: "Could not start sign-in") }
             }
         }
     }
@@ -153,10 +145,16 @@ class AccountViewModel @Inject constructor(
 
     fun signOut() {
         viewModelScope.launch {
-            _uiState.update { it.copy(busy = true, error = null, notice = null) }
+            _uiState.update { it.copy(signingOut = true, error = null, notice = null) }
             repository.signOut()
-            _uiState.update { it.copy(busy = false) }
+            _uiState.update { it.copy(signingOut = false) }
         }
+    }
+
+    /** The browser took over; on return the row should not still be spinning. */
+    fun onResumed() {
+        _uiState.update { it.copy(busyProvider = null) }
+        revalidate()
     }
 
     fun dismissNotice() = _uiState.update { it.copy(notice = null, error = null) }
@@ -198,14 +196,16 @@ internal fun accountRows(
             provider = provider,
             connected = identity != null,
             username = identity?.username,
+            // The last one left has no useful action: disconnecting it would leave you unable
+            // to sign in, and sign-out already sits at the bottom of the screen.
+            canDisconnect = identity != null && linked.size > 1,
             blockedReason = when {
-                identity == null -> null
-                linked.size <= 1 -> R.string.deployments_account_blocked_last
+                identity == null || linked.size <= 1 -> null
                 (spacesByProvider[provider] ?: 0) > 0 -> R.string.deployments_account_blocked_spaces
                 else -> null
             },
         )
-    }
+    }.sortedByDescending { it.connected }
 }
 
 /** Providers the server has configured, in a stable order. */
