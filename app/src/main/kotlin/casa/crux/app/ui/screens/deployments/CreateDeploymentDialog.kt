@@ -15,6 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -27,6 +28,7 @@ import casa.crux.app.data.crux.CruxWorkspace
 import casa.crux.app.ui.components.AppDialog
 import casa.crux.app.ui.components.AppDialogActions
 import casa.crux.app.ui.screens.account.providerLabel
+import kotlin.random.Random
 
 /**
  * The web dashboard's create form, as a dialog. Which fields appear depends on the active
@@ -44,9 +46,13 @@ fun CreateDeploymentDialog(
     // here rather than taking permanent room on the Accounts page.
     val deployable = state.account?.identities.orEmpty().filter { it.provider != "github" }
     val provider = createTargetFor(state.account)
-    var name by remember { mutableStateOf("") }
+    // Prefilled rather than a placeholder: Material3 hides a placeholder behind the label
+    // until the field is focused, so a suggestion you cannot see is no help at all.
+    var name by rememberSaveable { mutableStateOf(randomSpaceName()) }
     var password by remember { mutableStateOf("") }
-    var workspace by remember { mutableStateOf(state.workspaces.firstOrNull()) }
+    // Keyed on the list: the workspaces arrive after the dialog opens, and a plain remember
+    // would hold the null it was born with and leave Create disabled forever.
+    var workspace by remember(state.workspaces) { mutableStateOf(state.workspaces.firstOrNull()) }
     var template by remember { mutableStateOf<CruxTemplate?>(null) }
 
     val nameValid = isValidSpaceName(name)
@@ -222,3 +228,27 @@ internal fun buildRequest(
         else -> null
     }
 }
+
+/**
+ * A suggested space name, so the form can be submitted without typing anything.
+ *
+ * Shaped to the name rule both providers enforce — letters, digits and hyphens, starting
+ * with an alphanumeric — so a suggestion is never one the API would reject.
+ */
+internal fun randomSpaceName(random: Random = Random.Default): String {
+    val adjective = NAME_ADJECTIVES.random(random)
+    val noun = NAME_NOUNS.random(random)
+    return "$adjective-$noun-${random.nextInt(100, 1000)}"
+}
+
+private val NAME_ADJECTIVES = listOf(
+    "amber", "brisk", "calm", "clever", "coral", "eager", "fresh", "gentle", "golden",
+    "hidden", "jolly", "keen", "lively", "lucid", "mellow", "nimble", "polar", "quiet",
+    "rapid", "silver", "solar", "spry", "still", "sunny", "swift", "teal", "tidy", "vivid",
+)
+
+private val NAME_NOUNS = listOf(
+    "arbor", "beacon", "cedar", "comet", "delta", "ember", "falcon", "forge", "grove",
+    "harbor", "island", "lantern", "meadow", "nimbus", "orbit", "pier", "quarry", "ridge",
+    "river", "summit", "thicket", "tundra", "valley", "willow", "zenith",
+)

@@ -200,6 +200,24 @@ class DeploymentsLogicTest {
     }
 
     @Test
+    fun `a suggested name is always one the API would accept`() {
+        // The generator feeds straight into creation when the field is left blank, so a
+        // suggestion the server would reject is a dead end the user cannot see coming.
+        val random = kotlin.random.Random(1234)
+        repeat(500) {
+            val name = randomSpaceName(random)
+            assertTrue(name, isValidSpaceName(name))
+            assertEquals(name, name.lowercase())
+        }
+    }
+
+    @Test
+    fun `suggested names vary`() {
+        val names = (1..50).map { randomSpaceName() }.toSet()
+        assertTrue("expected variety, got ${names.size}", names.size > 40)
+    }
+
+    @Test
     fun `every status has a label`() {
         CruxDeploymentStatus.entries.forEach { status ->
             assertTrue(status.name, statusLabel(status).isNotBlank())
