@@ -18,7 +18,12 @@ data class CruxAccount(
     val activeProvider: String? = null,
     val activeIdentity: CruxIdentity? = null,
     val stale: Boolean = false,
-    val providers: List<String> = emptyList(),
+    /**
+     * Which providers the server has configured, as `{huggingface: true, ...}` — a map, not a
+     * list. Sign-in buttons are driven from this so the app never offers a provider the
+     * deployment cannot actually complete.
+     */
+    val providers: Map<String, Boolean> = emptyMap(),
 )
 
 @Serializable
@@ -44,11 +49,16 @@ data class CruxTemplate(
     val repo: String,
     val ref: String = "",
     @SerialName("private") val isPrivate: Boolean = false,
+    /** The server composes this already; fall back only when it is absent. */
+    @SerialName("label") val serverLabel: String? = null,
 ) {
     /** `owner/name` or `owner/name@ref`, the form the API accepts back. */
     val reference: String get() = if (ref.isBlank()) repo else "$repo@$ref"
 
-    val label: String get() = name?.takeIf { it.isNotBlank() } ?: reference
+    val label: String
+        get() = serverLabel?.takeIf { it.isNotBlank() }
+            ?: name?.takeIf { it.isNotBlank() }
+            ?: reference
 }
 
 @Serializable

@@ -36,6 +36,8 @@ data class DeploymentsUiState(
     val busyId: String? = null,
     val error: String? = null,
     val showCreateDialog: Boolean = false,
+    /** Providers the server actually has configured; empty until we have asked. */
+    val availableProviders: List<String> = emptyList(),
 )
 
 @HiltViewModel
@@ -62,8 +64,17 @@ class DeploymentsViewModel @Inject constructor(
     fun refresh() {
         viewModelScope.launch {
             if (!repository.isSignedIn()) {
+                // /api/session answers signed-out too, and its providers map is what decides
+                // which sign-in buttons can succeed.
+                val providers = runCatching { repository.publicProviders() }.getOrDefault(emptyList())
                 _uiState.update {
-                    it.copy(signedIn = false, isLoading = false, deployments = emptyList(), account = null)
+                    it.copy(
+                        signedIn = false,
+                        isLoading = false,
+                        deployments = emptyList(),
+                        account = null,
+                        availableProviders = providers,
+                    )
                 }
                 return@launch
             }
@@ -85,6 +96,7 @@ class DeploymentsViewModel @Inject constructor(
                         templates = templates?.templates.orEmpty(),
                         defaultTemplate = templates?.default,
                         workspaces = workspaces,
+                        availableProviders = configuredProviders(account),
                         isLoading = false,
                     )
                 }
@@ -257,6 +269,12 @@ internal fun orderDeployments(deployments: List<CruxDeployment>): List<CruxDeplo
         compareByDescending<CruxDeployment> { it.status.isPending }
             .thenByDescending { it.createdAt ?: "" }
     )
+
+/** The configured providers, in a stable order the UI can render directly. */
+internal fun configuredProviders(account: CruxAccount?): List<String> =
+    LOGIN_PROVIDERS.filter { account?.providers?.get(it) == true }
+
+internal val LOGIN_PROVIDERS = listOf("huggingface", "railway", "github")
 
 internal fun statusLabel(status: CruxDeploymentStatus): String = when (status) {
     CruxDeploymentStatus.QUEUED -> "Queued"

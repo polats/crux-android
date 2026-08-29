@@ -82,6 +82,10 @@ class CruxApi @Inject constructor(
 
     // --------------------------------------------------------------- account
 
+    /** /api/session answers signed-out as well, reporting which providers are configured. */
+    suspend fun publicAccount(): CruxAccount =
+        decode(client.get(url("/api/session")).decodeOrThrow())
+
     suspend fun account(token: String): CruxAccount =
         decode(client.get(url("/api/session")) { bearer(token) }.decodeOrThrow())
 

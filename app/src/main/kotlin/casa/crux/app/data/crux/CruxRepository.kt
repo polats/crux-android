@@ -73,6 +73,10 @@ class CruxRepository @Inject constructor(
         dataStore.edit { it.remove(accountKey) }
     }
 
+    /** Which providers the server offers, readable without being signed in. */
+    suspend fun publicProviders(): List<String> =
+        api.publicAccount().providers.filterValues { it }.keys.toList()
+
     suspend fun refreshAccount(): CruxAccount {
         val account = api.account(requireToken())
         dataStore.edit { it[accountKey] = json.encodeToString(CruxAccount.serializer(), account) }

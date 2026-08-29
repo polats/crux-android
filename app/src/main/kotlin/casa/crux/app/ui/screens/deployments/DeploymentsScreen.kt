@@ -118,6 +118,7 @@ fun DeploymentsScreen(
                 }
                 !state.signedIn -> SignedOut(
                     error = state.error,
+                    providers = state.availableProviders,
                     onSignIn = viewModel::signIn,
                     modifier = Modifier.align(Alignment.Center),
                 )
@@ -145,6 +146,7 @@ fun DeploymentsScreen(
 @Composable
 private fun SignedOut(
     error: String?,
+    providers: List<String>,
     onSignIn: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -168,14 +170,20 @@ private fun SignedOut(
         error?.let {
             Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
         }
-        AppPrimaryButton(onClick = { onSignIn("huggingface") }) {
-            Text(stringResource(R.string.deployments_sign_in_hugging_face))
-        }
-        AppSecondaryButton(onClick = { onSignIn("railway") }) {
-            Text(stringResource(R.string.deployments_sign_in_railway))
-        }
-        AppSecondaryButton(onClick = { onSignIn("github") }) {
-            Text(stringResource(R.string.deployments_sign_in_github))
+        // Only what the server has configured: offering a provider it cannot complete
+        // sends you to a browser that fails at the end.
+        val offered = providers.ifEmpty { LOGIN_PROVIDERS }
+        offered.forEachIndexed { index, provider ->
+            val label = when (provider) {
+                "huggingface" -> stringResource(R.string.deployments_sign_in_hugging_face)
+                "railway" -> stringResource(R.string.deployments_sign_in_railway)
+                else -> stringResource(R.string.deployments_sign_in_github)
+            }
+            if (index == 0) {
+                AppPrimaryButton(onClick = { onSignIn(provider) }) { Text(label) }
+            } else {
+                AppSecondaryButton(onClick = { onSignIn(provider) }) { Text(label) }
+            }
         }
     }
 }
