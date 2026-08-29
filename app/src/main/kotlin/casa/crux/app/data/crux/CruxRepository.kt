@@ -12,6 +12,7 @@ import casa.crux.app.data.sync.LocalSyncSecretStore
 import casa.crux.app.domain.model.ServerConfig
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -217,7 +218,7 @@ class CruxRepository @Inject constructor(
      * a hosted deployment with no further knowledge of Crux.
      */
     suspend fun connect(deployment: CruxDeployment): ServerConfig {
-        val connection = api.connection(requireToken(), deployment.id)
+        val connection = awaitReady(deployment)
         val url = connection.appUrl ?: deployment.appUrl
             ?: throw CruxApiException("This deployment has no address yet")
         // A codespace's port is private, so every later request to this host needs a GitHub
@@ -240,6 +241,29 @@ class CruxRepository @Inject constructor(
         return result.server
     }
 
+    /**
+     * Fetches the connection, waiting out an idle codespace.
+     *
+     * A codespace stops itself after 30 minutes and answers nothing until it is started again.
+     * The connection endpoint starts it and reports `ready = false` rather than blocking, so
+     * this is where the waiting happens — a resume takes about 17 seconds and keeps the same
+     * URL and disk, which is what makes "tap Connect, we wake it" honest.
+     *
+     * Only ever loops for a codespace: every other provider leaves `ready` null.
+     */
+    private suspend fun awaitReady(deployment: CruxDeployment): CruxConnection {
+        var connection = api.connection(requireToken(), deployment.id)
+        val deadline = System.currentTimeMillis() + WAKE_TIMEOUT_MS
+        while (connection.ready == false && System.currentTimeMillis() < deadline) {
+            Log.i(TAG, "Waiting for ${deployment.displayName}: ${connection.codespaceState}")
+            delay(WAKE_POLL_MS)
+            connection = api.connection(requireToken(), deployment.id)
+        }
+        // Handed over even if it never came up: the address and credentials are right, and the
+        // server list's own health check says more about why than a guess here would.
+        return connection
+    }
+
     private fun requireToken(): String =
         token() ?: throw CruxUnauthorizedException("Sign in first")
 
@@ -251,6 +275,9 @@ class CruxRepository @Inject constructor(
 
     companion object {
         private const val TAG = "CruxRepository"
+        /** A resume was measured at about 17 seconds; this leaves room for a cold one. */
+        private const val WAKE_TIMEOUT_MS = 90_000L
+        private const val WAKE_POLL_MS = 3_000L
         private const val ACCOUNT_KEY = "crux_account"
     }
 }

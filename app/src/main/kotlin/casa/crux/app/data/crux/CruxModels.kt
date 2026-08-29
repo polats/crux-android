@@ -114,6 +114,13 @@ data class CruxConnection(
      */
     val githubToken: String? = null,
     val needsToken: Boolean = false,
+    /**
+     * A codespace stops itself when idle. Asking for a connection starts it again, but a resume
+     * takes about 17 seconds, so the server answers straight away with `ready = false` and the
+     * client comes back. The address and credentials are unchanged across a stop.
+     */
+    val ready: Boolean? = null,
+    val codespaceState: String? = null,
 )
 
 @Serializable

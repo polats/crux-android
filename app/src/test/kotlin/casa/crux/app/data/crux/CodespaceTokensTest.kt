@@ -38,6 +38,25 @@ class CodespaceTokensTest {
     }
 
     @Test
+    fun `an idle codespace reports itself as not ready`() {
+        val waking = json.decodeFromString(
+            CruxConnection.serializer(),
+            """{"id":"d1","username":"opencode","password":"pw",
+                "appUrl":"https://abc-7860.app.github.dev","githubToken":"gho_a",
+                "needsToken":true,"ready":false,"codespaceState":"Shutdown"}"""
+        )
+        assertEquals(false, waking.ready)
+        assertEquals("Shutdown", waking.codespaceState)
+
+        // Every other provider leaves it null, which is what keeps connect from ever looping.
+        val space = json.decodeFromString(
+            CruxConnection.serializer(),
+            """{"id":"d2","username":"opencode","password":"pw","appUrl":"https://x.hf.space"}"""
+        )
+        assertNull(space.ready)
+    }
+
+    @Test
     fun `a host with no deployment behind it is left alone`() = runBlocking {
         val tokens = CodespaceTokens()
         tokens.refresher = { error("must not be asked for a token") }
