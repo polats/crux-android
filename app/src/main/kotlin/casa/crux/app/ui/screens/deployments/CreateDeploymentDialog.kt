@@ -73,7 +73,10 @@ fun CreateDeploymentDialog(
     val provider = createTargetFor(state.account)
     // Prefilled rather than a placeholder: Material3 hides a placeholder behind the label
     // until the field is focused, so a suggestion you cannot see is no help at all.
-    var name by rememberSaveable { mutableStateOf(randomSpaceName()) }
+    // Kept, so clearing the repository puts back the name that was offered rather than
+    // rolling a new one and looking like something went wrong.
+    val suggestedName = rememberSaveable { randomSpaceName() }
+    var name by rememberSaveable { mutableStateOf(suggestedName) }
     // The suggestion is a starting point, not a value to edit around: the first tap clears it,
     // so typing a name of your own does not begin with deleting one you did not choose.
     var suggestionSpent by rememberSaveable { mutableStateOf(false) }
@@ -100,7 +103,17 @@ fun CreateDeploymentDialog(
         if (searchingRepo) {
             RepoSearch(
                 repositories = state.repositories,
-                onPick = { workspaceRepo = it; searchingRepo = false },
+                onPick = { picked ->
+                    workspaceRepo = picked
+                    // The repository is the name, unless one was typed by hand — in which case
+                    // it was chosen deliberately and is not ours to overwrite.
+                    if (!suggestionSpent) {
+                        name = picked
+                            ?.let { spaceNameFor(it, state.deployments.map { d -> d.displayName }) }
+                            ?: suggestedName
+                    }
+                    searchingRepo = false
+                },
                 onCancel = { searchingRepo = false },
             )
             return@AppDialog
@@ -155,37 +168,9 @@ fun CreateDeploymentDialog(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             } else {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { suggestionSpent = true; name = it },
-                    label = { Text(stringResource(R.string.deployments_field_name)) },
-                    singleLine = true,
-                    isError = name.isNotBlank() && !nameValid,
-                    supportingText = {
-                        Text(
-                            if (name.isNotBlank() && !nameValid) {
-                                stringResource(R.string.deployments_field_name_invalid)
-                            } else {
-                                stringResource(R.string.deployments_field_name_hint)
-                            }
-                        )
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .onFocusChanged { focus ->
-                            // Tapping in is how you say "I want my own name", so the
-                            // suggestion gets out of the way rather than needing to be
-                            // selected and deleted first.
-                            if (focus.isFocused && !suggestionSpent) {
-                                suggestionSpent = true
-                                name = ""
-                            }
-                        },
-                )
-
                 if (state.repositories.isNotEmpty()) {
-                    // Beside the name rather than under Advanced: what a space starts with is
-                    // the decision worth making here, and an empty one is only the default.
+                    // The one question the form really asks. The name follows from it, so it
+                    // moved to Advanced alongside the other things that have good defaults.
                     RepoField(selected = workspaceRepo, onOpen = { searchingRepo = true })
                 }
 
@@ -204,6 +189,34 @@ fun CreateDeploymentDialog(
                 }
 
                 if (showAdvanced) {
+                    OutlinedTextField(
+                        value = name,
+                        onValueChange = { suggestionSpent = true; name = it },
+                        label = { Text(stringResource(R.string.deployments_field_name)) },
+                        singleLine = true,
+                        isError = name.isNotBlank() && !nameValid,
+                        supportingText = {
+                            Text(
+                                if (name.isNotBlank() && !nameValid) {
+                                    stringResource(R.string.deployments_field_name_invalid)
+                                } else {
+                                    stringResource(R.string.deployments_field_name_hint)
+                                }
+                            )
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .onFocusChanged { focus ->
+                                // Tapping in is how you say "I want my own name", so the
+                                // suggestion gets out of the way rather than needing to be
+                                // selected and deleted first.
+                                if (focus.isFocused && !suggestionSpent) {
+                                    suggestionSpent = true
+                                    name = ""
+                                }
+                            },
+                    )
+
                     if (provider == "railway") {
                         Picker(
                             label = stringResource(R.string.deployments_field_workspace),
@@ -469,6 +482,38 @@ internal fun buildRequest(
         else -> null
     }
 }
+
+/**
+ * The space name a repository suggests: its own short name, made legal, made unique.
+ *
+ * Legal matters because a repository name is not a space name. `polats/crux.casa` becomes
+ * `crux-casa` — the API rejects anything but letters, digits and hyphens starting with an
+ * alphanumeric, so a name lifted straight across would be refused at create time.
+ *
+ * Unique matters because the obvious name is the one already used: making a second space from
+ * the same repository is exactly when the collision happens.
+ */
+internal fun spaceNameFor(repo: String, taken: Collection<String> = emptyList()): String? {
+    val base = repo.substringAfterLast('/')
+        .lowercase()
+        .replace(Regex("[^a-z0-9-]+"), "-")
+        .trim('-')
+        .take(MAX_SPACE_NAME)
+        .trimEnd('-')
+    if (base.isEmpty()) return null
+
+    val used = taken.map { it.lowercase() }.toSet()
+    if (base !in used) return base
+    // -2 rather than -1: the first one is not "number one" to anybody.
+    for (suffix in 2..99) {
+        val marker = "-$suffix"
+        val candidate = base.take(MAX_SPACE_NAME - marker.length).trimEnd('-') + marker
+        if (candidate !in used) return candidate
+    }
+    return null
+}
+
+private const val MAX_SPACE_NAME = 63
 
 /**
  * A suggested space name, so the form can be submitted without typing anything.
