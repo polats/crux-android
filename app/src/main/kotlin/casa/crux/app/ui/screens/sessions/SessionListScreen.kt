@@ -641,6 +641,7 @@ fun SessionListScreen(
         OpenProjectDialog(
             viewModel = viewModel,
             projects = uiState.projects,
+            startIn = checkoutDirectory,
             onSelect = { directory ->
                 showOpenProject = false
                 viewModel.createNewSession(directory = directory)
@@ -831,7 +832,9 @@ private fun OpenProjectDialog(
     viewModel: SessionListViewModel,
     projects: List<Project>,
     onSelect: (String) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    /** Where to open, when this server was created from a repository. */
+    startIn: String? = null,
 ) {
     val isAmoled = isAmoledTheme()
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -854,9 +857,13 @@ private fun OpenProjectDialog(
     LaunchedEffect(Unit) {
         val home = viewModel.getHomeDirectory()
         homeDir = home
-        currentDir = home
+        // A checkout lives under the server's working directory, which is not under home — so
+        // opening at home showed a browser with no sign of the repository the space was made
+        // from, and no obvious way to reach it.
+        val start = startIn?.trim()?.takeIf { it.isNotBlank() } ?: home
+        currentDir = start
         isLoading = true
-        directories = viewModel.listDirectories(home)
+        directories = viewModel.listDirectories(start)
         isLoading = false
     }
 
@@ -927,8 +934,25 @@ private fun OpenProjectDialog(
                         text = stringResource(R.string.sessions_open_project),
                         style = MaterialTheme.typography.titleMedium
                     )
-                    IconButton(onClick = onDismiss) {
-                        Icon(Icons.Default.Close, contentDescription = stringResource(R.string.close))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        // In the header rather than floating over the list. A button that
+                        // hovers above a scrolling list always sits on top of one of its rows,
+                        // and this one covered the row you were trying to open.
+                        IconButton(
+                            onClick = {
+                                showCreateFolderDialog = true
+                                createFolderError = null
+                                if (newFolderName.isBlank()) newFolderName = ""
+                            }
+                        ) {
+                            Icon(
+                                Icons.Default.CreateNewFolder,
+                                contentDescription = stringResource(R.string.sessions_create_folder),
+                            )
+                        }
+                        IconButton(onClick = onDismiss) {
+                            Icon(Icons.Default.Close, contentDescription = stringResource(R.string.close))
+                        }
                     }
                 }
 
@@ -1104,12 +1128,17 @@ private fun OpenProjectDialog(
                             } else {
                                 LazyColumn(
                                     modifier = Modifier.fillMaxSize(),
-                                    contentPadding = PaddingValues(vertical = 4.dp)
+                                    // Room for the button below, so it never covers a row
+                                    // rather than merely sitting beside one.
+                                    contentPadding = PaddingValues(top = 4.dp, bottom = 80.dp)
                                 ) {
                                     items(directories, key = { it.name }) { node ->
                                         val absPath = node.absolute ?: "${currentDir?.trimEnd('/')}/${node.name}"
                                         DirectoryRow(
-                                            displayPath = tildeReplace(absPath) + "/",
+                                            // The folder's own name. Every entry here shares
+                                            // the directory being browsed, so showing the full
+                                            // path made a list of identical truncated strings.
+                                            displayPath = node.name.trimEnd('/') + "/",
                                             onNavigate = {
                                                 // Navigate into this directory
                                                 currentDir = absPath
@@ -1122,33 +1151,6 @@ private fun OpenProjectDialog(
                         }
                     }
 
-                    FloatingActionButton(
-                        onClick = {
-                            showCreateFolderDialog = true
-                            createFolderError = null
-                            if (newFolderName.isBlank()) newFolderName = ""
-                        },
-                        modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .navigationBarsPadding()
-                            .imePadding()
-                            .padding(16.dp)
-                            .then(if (isAmoled) Modifier.appPopupBorder(FloatingActionButtonDefaults.shape) else Modifier),
-                        containerColor = if (isAmoled) Color.Black else MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = if (isAmoled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onPrimaryContainer,
-                        elevation = if (isAmoled) {
-                            FloatingActionButtonDefaults.elevation(
-                                defaultElevation = 0.dp,
-                                pressedElevation = 0.dp,
-                                focusedElevation = 0.dp,
-                                hoveredElevation = 0.dp,
-                            )
-                        } else {
-                            FloatingActionButtonDefaults.elevation()
-                        },
-                    ) {
-                        Icon(Icons.Default.CreateNewFolder, contentDescription = stringResource(R.string.sessions_create_folder))
-                    }
                 }
             }
         }
