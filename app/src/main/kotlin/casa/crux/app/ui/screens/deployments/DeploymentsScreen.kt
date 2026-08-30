@@ -2,8 +2,9 @@ package casa.crux.app.ui.screens.deployments
 
 import android.content.Context
 import android.net.Uri
-import androidx.browser.customtabs.CustomTabsIntent
 import android.widget.Toast
+import androidx.browser.customtabs.CustomTabsIntent
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,24 +12,40 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.Logout
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.RemoveCircleOutline
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -37,28 +54,29 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.compose.runtime.DisposableEffect
 import casa.crux.app.R
 import casa.crux.app.data.crux.CruxDeployment
+import casa.crux.app.data.crux.CruxDeploymentStatus
 import casa.crux.app.data.crux.CruxIntent
 import casa.crux.app.domain.model.ServerConfig
-import casa.crux.app.ui.components.ProviderIcon
-import casa.crux.app.ui.screens.account.MAIN_PROVIDER
 import casa.crux.app.ui.components.AppCardShape
 import casa.crux.app.ui.components.AppDialog
 import casa.crux.app.ui.components.AppPrimaryButton
 import casa.crux.app.ui.components.AppSecondaryButton
+import casa.crux.app.ui.components.ProviderIcon
+import casa.crux.app.ui.screens.account.MAIN_PROVIDER
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
-import androidx.compose.material3.Card
-import androidx.compose.material3.TextButton
 import kotlinx.coroutines.flow.SharedFlow
 
 /**
@@ -121,9 +139,7 @@ fun DeploymentsScreen(
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             when {
-                state.isLoading && state.deployments.isEmpty() -> {
-                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                }
+                state.isLoading && state.deployments.isEmpty() -> LoadingSkeleton()
                 !state.signedIn -> SignedOut(
                     // Straight into GitHub's authorization rather than by way of the Accounts
                     // screen, which had exactly one button on it and nothing else to decide.
@@ -225,13 +241,28 @@ private fun DeploymentList(
             }
             if (ordered.isEmpty()) {
                 item(key = "empty") {
+                    // Headline, then what a space actually is, then the action. The old one
+                    // was a single line and a button, which told a new arrival nothing about
+                    // what they were about to make.
                     Column(
-                        modifier = Modifier.fillMaxWidth().padding(top = 48.dp),
+                        modifier = Modifier.fillMaxWidth().padding(top = 48.dp, start = 16.dp, end = 16.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        Text(stringResource(R.string.deployments_empty))
-                        AppPrimaryButton(onClick = onCreate) {
+                        Text(
+                            stringResource(R.string.deployments_empty),
+                            style = MaterialTheme.typography.titleMedium,
+                        )
+                        Text(
+                            stringResource(R.string.deployments_empty_detail),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center,
+                        )
+                        AppPrimaryButton(
+                            onClick = onCreate,
+                            modifier = Modifier.padding(top = 8.dp),
+                        ) {
                             Text(stringResource(R.string.deployments_create))
                         }
                     }
@@ -250,6 +281,13 @@ private fun DeploymentList(
     }
 }
 
+/**
+ * One space.
+ *
+ * The card is the button. It used to carry three of them — Delete, Retry, Connect — in a row,
+ * with the destructive one nearest the thumb and the same weight as the one you press every
+ * time. Tapping the card connects; everything else moved into the overflow.
+ */
 @Composable
 private fun DeploymentCard(
     deployment: CruxDeployment,
@@ -261,48 +299,108 @@ private fun DeploymentCard(
     // Deleting a space destroys a running server on the provider, and it cannot be undone
     // from here or anywhere else, so it is worth one tap of friction.
     var confirmDelete by remember { mutableStateOf(false) }
+    var menuOpen by remember { mutableStateOf(false) }
+    val clipboard = LocalClipboardManager.current
+    val context = LocalContext.current
+    val connectable = deployment.status.isConnectable && !busy
 
     Card(
         shape = AppCardShape,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(if (connectable) Modifier.clickable(onClick = onConnect) else Modifier),
     ) {
-        Column(
+        Row(
             modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(deployment.displayName, style = MaterialTheme.typography.titleMedium)
-            Text(
-                stringResource(
-                    R.string.deployments_status_line,
-                    statusLabel(deployment.status),
-                    deployment.provider,
-                ),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            deployment.error?.let {
-                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
-                verticalAlignment = Alignment.CenterVertically,
+            // Which provider a space runs on was buried in a line of grey text next to its
+            // status, where the two read as one indistinguishable sentence.
+            ProviderIcon(providerId = deployment.provider, size = 24.dp)
+
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
-                if (busy) {
-                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                Text(deployment.displayName, style = MaterialTheme.typography.titleMedium)
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    StatusMark(deployment.status)
+                    Text(
+                        statusLabel(deployment.status),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
-                TextButton(onClick = { confirmDelete = true }, enabled = !busy) {
-                    Text(stringResource(R.string.deployments_delete))
+                if (deployment.status.isPending) {
+                    LinearProgressIndicator(
+                        modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                    )
                 }
-                if (deployment.status.name == "ERROR") {
-                    AppSecondaryButton(onClick = onRetry, enabled = !busy) {
-                        Text(stringResource(R.string.deployments_retry))
+                deployment.error?.let {
+                    Text(
+                        it,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            }
+
+            if (busy) {
+                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+            } else {
+                Box {
+                    IconButton(onClick = { menuOpen = true }) {
+                        Icon(
+                            Icons.Default.MoreVert,
+                            contentDescription = stringResource(R.string.deployments_more_actions),
+                        )
                     }
-                }
-                if (deployment.status.isConnectable) {
-                    AppPrimaryButton(onClick = onConnect, enabled = !busy) {
-                        Text(stringResource(R.string.deployments_connect))
+                    DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                        deployment.appUrl?.let { url ->
+                            // The thing you reach for when something is wrong, and there was
+                            // nowhere in the app to get it from.
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.deployments_copy_url)) },
+                                leadingIcon = { Icon(Icons.Default.ContentCopy, contentDescription = null) },
+                                onClick = {
+                                    menuOpen = false
+                                    clipboard.setText(AnnotatedString(url))
+                                    Toast.makeText(
+                                        context,
+                                        R.string.deployments_url_copied,
+                                        Toast.LENGTH_SHORT,
+                                    ).show()
+                                },
+                            )
+                        }
+                        if (deployment.status == CruxDeploymentStatus.ERROR) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.deployments_retry)) },
+                                leadingIcon = { Icon(Icons.Default.Refresh, contentDescription = null) },
+                                onClick = { menuOpen = false; onRetry() },
+                            )
+                        }
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    stringResource(R.string.deployments_delete),
+                                    color = MaterialTheme.colorScheme.error,
+                                )
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Default.DeleteOutline,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.error,
+                                )
+                            },
+                            onClick = { menuOpen = false; confirmDelete = true },
+                        )
                     }
                 }
             }
@@ -319,6 +417,54 @@ private fun DeploymentCard(
             },
         )
     }
+}
+
+/**
+ * Card-shaped placeholders while the list loads.
+ *
+ * A centred spinner says only "wait"; these say what is coming and hold its shape, so the
+ * screen does not jump when the answer arrives.
+ */
+@Composable
+private fun LoadingSkeleton() {
+    Column(
+        modifier = Modifier.fillMaxSize().padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        repeat(3) {
+            Card(
+                shape = AppCardShape,
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                ),
+                modifier = Modifier.fillMaxWidth().height(76.dp),
+            ) {}
+        }
+    }
+}
+
+/**
+ * Status as a glyph, not only a colour.
+ *
+ * Each state gets a different shape as well as a different colour, so the four are told apart
+ * without relying on hue — which matters for colourblind users, and in AMOLED where the
+ * palette is already doing less work.
+ */
+@Composable
+private fun StatusMark(status: CruxDeploymentStatus) {
+    val (icon, tint) = when (status) {
+        CruxDeploymentStatus.RUNNING ->
+            Icons.Filled.CheckCircle to MaterialTheme.colorScheme.primary
+        CruxDeploymentStatus.QUEUED, CruxDeploymentStatus.PROVISIONING ->
+            Icons.Filled.Schedule to MaterialTheme.colorScheme.tertiary
+        CruxDeploymentStatus.ERROR ->
+            Icons.Filled.ErrorOutline to MaterialTheme.colorScheme.error
+        CruxDeploymentStatus.DELETING, CruxDeploymentStatus.DELETED ->
+            Icons.Filled.RemoveCircleOutline to MaterialTheme.colorScheme.onSurfaceVariant
+        CruxDeploymentStatus.UNKNOWN ->
+            Icons.Filled.HelpOutline to MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(14.dp))
 }
 
 @Composable

@@ -767,6 +767,7 @@ Tokens: ~%4$d -&gt; ~%5$d</string>
     <string name="deployments_sign_in_railway">Sign in with Railway</string>
     <string name="deployments_sign_in_github">Sign in with GitHub</string>
     <string name="deployments_empty">No spaces yet</string>
+    <string name="deployments_empty_detail">A space is an opencode server running on your own GitHub, Hugging Face or Railway account.</string>
     <string name="deployments_account">Signed in as %1$s on %2$s</string>
     <string name="deployments_status_line">%1$s · %2$s</string>
     <string name="deployments_connect">Connect</string>
@@ -785,6 +786,9 @@ Tokens: ~%4$d -&gt; ~%5$d</string>
     <string name="deployments_field_password">OpenCode password (optional)</string>
     <string name="deployments_field_password_hint">Leave empty and one is generated for you</string>
     <string name="deployments_advanced">Advanced</string>
+    <string name="deployments_more_actions">More actions</string>
+    <string name="deployments_copy_url">Copy address</string>
+    <string name="deployments_url_copied">Address copied</string>
     <string name="deployments_field_create_in_none">Choose an account</string>
     <string name="deployments_provider_unconnected_suffix">not connected</string>
     <string name="deployments_account_title">Accounts</string>
