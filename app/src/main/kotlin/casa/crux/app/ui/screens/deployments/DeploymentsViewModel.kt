@@ -19,6 +19,8 @@ import casa.crux.app.data.crux.CruxWorkspace
 import casa.crux.app.data.update.UpdateRepository
 import casa.crux.app.domain.model.ServerConfig
 import casa.crux.app.service.OpenCodeConnectionService
+import casa.crux.app.data.crux.CruxSignInEvent
+import casa.crux.app.ui.screens.account.signInMessage
 import casa.crux.app.ui.screens.account.configuredProviders
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -61,6 +63,16 @@ class DeploymentsViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(DeploymentsUiState())
     val uiState: StateFlow<DeploymentsUiState> = _uiState.asStateFlow()
 
+    /**
+     * One-shot text for the screen to toast.
+     *
+     * Sign-in and linking both leave for the browser and come back, so without a word on
+     * return the app has simply changed and not said why. Separate from `error` in the state,
+     * which persists and describes the screen rather than announcing something that happened.
+     */
+    private val _messages = MutableSharedFlow<String>()
+    val messages: SharedFlow<String> = _messages.asSharedFlow()
+
     /** URLs for the screen to open in a Custom Tab, as ServerMcpViewModel does for MCP auth. */
     private val _authorizationUrls = MutableSharedFlow<String>()
     val authorizationUrls: SharedFlow<String> = _authorizationUrls.asSharedFlow()
@@ -90,6 +102,16 @@ class DeploymentsViewModel @Inject constructor(
             repository.signedIn.collect { signedIn ->
                 _uiState.update { it.copy(signedIn = signedIn == true) }
                 if (signedIn == true) refresh() else pollJob?.cancel()
+            }
+        }
+        // What the sign-in actually did — signed in, linked, or switched account. The account
+        // it landed on is worth saying out loud, since a switch is the surprising one.
+        viewModelScope.launch {
+            repository.events.collect { event ->
+                when (event) {
+                    is CruxSignInEvent.SignedIn -> _messages.emit(signInMessage(event.outcome))
+                    is CruxSignInEvent.Failed -> _messages.emit(event.message)
+                }
             }
         }
     }

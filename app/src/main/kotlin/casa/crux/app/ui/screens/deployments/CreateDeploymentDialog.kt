@@ -17,6 +17,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.layout.Row
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material3.Icon
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -42,6 +50,7 @@ fun CreateDeploymentDialog(
     onDismiss: () -> Unit,
     onCreate: (CruxCreateRequest) -> Unit,
     onSwitchTarget: (String) -> Unit = {},
+    onConnectProvider: (String) -> Unit = {},
 ) {
     // Which account a space lands in is a decision you make while creating one, so it lives
     // here rather than taking permanent room on the Accounts page.
@@ -50,7 +59,13 @@ fun CreateDeploymentDialog(
     // Prefilled rather than a placeholder: Material3 hides a placeholder behind the label
     // until the field is focused, so a suggestion you cannot see is no help at all.
     var name by rememberSaveable { mutableStateOf(randomSpaceName()) }
+    // The suggestion is a starting point, not a value to edit around: the first tap clears it,
+    // so typing a name of your own does not begin with deleting one you did not choose.
+    var suggestionSpent by rememberSaveable { mutableStateOf(false) }
     var password by remember { mutableStateOf("") }
+    var showAdvanced by rememberSaveable { mutableStateOf(false) }
+    var pendingConnect by remember { mutableStateOf<String?>(null) }
+    val notConnected = stringResource(R.string.deployments_provider_unconnected_suffix)
     // Keyed on the list: the workspaces arrive after the dialog opens, and a plain remember
     // would hold the null it was born with and leave Create disabled forever.
     var workspace by remember(state.workspaces) { mutableStateOf(state.workspaces.firstOrNull()) }
@@ -69,29 +84,56 @@ fun CreateDeploymentDialog(
         ) {
             Text(stringResource(R.string.deployments_create_title), style = MaterialTheme.typography.titleLarge)
 
+            run {
+                // Every provider, always — the dropdown is where you learn that Railway and
+                // Hugging Face exist at all. Unconnected ones are listed but cannot be chosen;
+                // picking one offers to connect it instead of silently doing nothing.
+                val choices = state.availableProviders.ifEmpty { DEPLOY_PROVIDERS.toList() }
+                    .filter { it in DEPLOY_PROVIDERS }
+                val connectedBy = state.account?.identities.orEmpty().associateBy { it.provider }
+                Picker(
+                    label = stringResource(R.string.deployments_field_create_in),
+                    selected = connectedBy[provider]
+                        ?.let { "${providerLabel(it.provider)} — ${it.username}" }
+                        ?: stringResource(R.string.deployments_field_create_in_none),
+                    options = choices.map { candidate ->
+                        connectedBy[candidate]
+                            ?.let { "${providerLabel(candidate)} — ${it.username}" }
+                            ?: "${providerLabel(candidate)} — ${notConnected}"
+                    },
+                    onSelect = { index ->
+                        val candidate = choices.getOrNull(index) ?: return@Picker
+                        if (connectedBy.containsKey(candidate)) {
+                            pendingConnect = null
+                            onSwitchTarget(candidate)
+                        } else {
+                            // Left unselected on purpose: choosing a provider you have no
+                            // account with would arm a Create button that cannot succeed.
+                            pendingConnect = candidate
+                        }
+                    },
+                )
+                pendingConnect?.let { candidate ->
+                    ConnectPrompt(
+                        provider = candidate,
+                        onConnect = {
+                            pendingConnect = null
+                            onConnectProvider(candidate)
+                        },
+                    )
+                }
+            }
+
             if (provider == null) {
-                // GitHub alone signs you in but cannot hold a deployment, so say so rather
-                // than offering a form that cannot succeed.
                 Text(
                     stringResource(R.string.deployments_create_no_target),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             } else {
-                if (deployable.size >= 2) {
-                    Picker(
-                        label = stringResource(R.string.deployments_field_create_in),
-                        selected = deployable.firstOrNull { it.provider == provider }
-                            ?.let { "${providerLabel(it.provider)} — ${it.username}" }
-                            .orEmpty(),
-                        options = deployable.map { "${providerLabel(it.provider)} — ${it.username}" },
-                        onSelect = { index -> deployable.getOrNull(index)?.let { onSwitchTarget(it.provider) } },
-                    )
-                }
-
                 OutlinedTextField(
                     value = name,
-                    onValueChange = { name = it },
+                    onValueChange = { suggestionSpent = true; name = it },
                     label = { Text(stringResource(R.string.deployments_field_name)) },
                     singleLine = true,
                     isError = name.isNotBlank() && !nameValid,
@@ -104,40 +146,66 @@ fun CreateDeploymentDialog(
                             }
                         )
                     },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .onFocusChanged { focus ->
+                            // Tapping in is how you say "I want my own name", so the
+                            // suggestion gets out of the way rather than needing to be
+                            // selected and deleted first.
+                            if (focus.isFocused && !suggestionSpent) {
+                                suggestionSpent = true
+                                name = ""
+                            }
+                        },
                 )
 
-                if (provider == "railway") {
-                    Picker(
-                        label = stringResource(R.string.deployments_field_workspace),
-                        selected = workspace?.name ?: workspace?.id
-                            ?: stringResource(R.string.deployments_field_workspace_none),
-                        options = state.workspaces.map { it.name ?: it.id },
-                        onSelect = { index -> workspace = state.workspaces.getOrNull(index) },
+                // A name is the only thing anyone usually supplies. The rest have working
+                // defaults — first workspace, default template, generated password — so they
+                // are here for the times you want them rather than in the way every time.
+                TextButton(onClick = { showAdvanced = !showAdvanced }) {
+                    Icon(
+                        if (showAdvanced) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        contentDescription = null,
+                    )
+                    Text(
+                        stringResource(R.string.deployments_advanced),
+                        modifier = Modifier.padding(start = 4.dp),
                     )
                 }
 
-                val templateOptions = listOfNotNull(state.defaultTemplate) + state.templates
-                if (templateOptions.isNotEmpty()) {
-                    Picker(
-                        label = stringResource(R.string.deployments_field_template),
-                        selected = template?.label
-                            ?: state.defaultTemplate?.label
-                            ?: stringResource(R.string.deployments_field_template_default),
-                        options = templateOptions.map { it.label },
-                        onSelect = { index -> template = templateOptions.getOrNull(index) },
+                if (showAdvanced) {
+                    if (provider == "railway") {
+                        Picker(
+                            label = stringResource(R.string.deployments_field_workspace),
+                            selected = workspace?.name ?: workspace?.id
+                                ?: stringResource(R.string.deployments_field_workspace_none),
+                            options = state.workspaces.map { it.name ?: it.id },
+                            onSelect = { index -> workspace = state.workspaces.getOrNull(index) },
+                        )
+                    }
+
+                    val templateOptions = listOfNotNull(state.defaultTemplate) + state.templates
+                    if (templateOptions.isNotEmpty()) {
+                        Picker(
+                            label = stringResource(R.string.deployments_field_template),
+                            selected = template?.label
+                                ?: state.defaultTemplate?.label
+                                ?: stringResource(R.string.deployments_field_template_default),
+                            options = templateOptions.map { it.label },
+                            onSelect = { index -> template = templateOptions.getOrNull(index) },
+                        )
+                    }
+
+                    OutlinedTextField(
+                        value = password,
+                        onValueChange = { password = it },
+                        label = { Text(stringResource(R.string.deployments_field_password)) },
+                        singleLine = true,
+                        visualTransformation = PasswordVisualTransformation(),
+                        supportingText = { Text(stringResource(R.string.deployments_field_password_hint)) },
+                        modifier = Modifier.fillMaxWidth(),
                     )
                 }
-
-                OutlinedTextField(
-                    value = password,
-                    onValueChange = { password = it },
-                    label = { Text(stringResource(R.string.deployments_field_password)) },
-                    singleLine = true,
-                    visualTransformation = PasswordVisualTransformation(),
-                    supportingText = { Text(stringResource(R.string.deployments_field_password_hint)) },
-                    modifier = Modifier.fillMaxWidth(),
-                )
             }
 
             state.error?.let {
@@ -161,6 +229,26 @@ fun CreateDeploymentDialog(
                 },
                 confirmEnabled = canCreate,
             )
+        }
+    }
+}
+
+/** Offered instead of a selection, when the provider picked has no account behind it. */
+@Composable
+private fun ConnectPrompt(provider: String, onConnect: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            stringResource(R.string.deployments_provider_not_connected, providerLabel(provider)),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f),
+        )
+        TextButton(onClick = onConnect) {
+            Text(stringResource(R.string.deployments_account_connect))
         }
     }
 }

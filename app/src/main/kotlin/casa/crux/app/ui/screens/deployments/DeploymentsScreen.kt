@@ -3,6 +3,7 @@ package casa.crux.app.ui.screens.deployments
 import android.content.Context
 import android.net.Uri
 import androidx.browser.customtabs.CustomTabsIntent
+import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -46,6 +47,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.runtime.DisposableEffect
 import casa.crux.app.R
 import casa.crux.app.data.crux.CruxDeployment
+import casa.crux.app.data.crux.CruxIntent
 import casa.crux.app.domain.model.ServerConfig
 import casa.crux.app.ui.components.ProviderIcon
 import casa.crux.app.ui.screens.account.MAIN_PROVIDER
@@ -78,6 +80,13 @@ fun DeploymentsScreen(
     // Custom Tab reuses the browser session, so an existing crux.casa login signs in at once.
     LaunchedEffect(Unit) {
         viewModel.authorizationUrls.collect { url -> openCustomTab(context, url) }
+    }
+    // A sign-in leaves and comes back through the browser, so without this the app simply
+    // looks different on return with nothing said about why.
+    LaunchedEffect(Unit) {
+        viewModel.messages.collect { message ->
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        }
     }
     LaunchedEffect(Unit) {
         viewModel.connected.collect(onServerConnected)
@@ -142,6 +151,9 @@ fun DeploymentsScreen(
             onDismiss = { viewModel.showCreateDialog(false) },
             onCreate = viewModel::create,
             onSwitchTarget = viewModel::switchDeployTarget,
+            // Linking, not signing in: there is already an account, and this attaches the
+            // provider to it.
+            onConnectProvider = { viewModel.signIn(it, CruxIntent.LINK) },
         )
     }
 }

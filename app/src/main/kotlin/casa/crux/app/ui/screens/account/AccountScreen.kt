@@ -1,5 +1,6 @@
 package casa.crux.app.ui.screens.account
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Box
@@ -62,6 +63,13 @@ fun AccountScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+    // Connecting leaves for the browser and comes back; without a word on return the rows have
+    // simply rearranged and nothing has said why.
+    LaunchedEffect(Unit) {
+        viewModel.messages.collect { message ->
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        }
+    }
 
     LaunchedEffect(Unit) {
         viewModel.authorizationUrls.collect { url -> openCustomTab(context, url) }

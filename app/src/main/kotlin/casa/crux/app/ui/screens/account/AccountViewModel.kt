@@ -78,14 +78,27 @@ class AccountViewModel @Inject constructor(
         viewModelScope.launch {
             repository.events.collect { event ->
                 when (event) {
-                    is CruxSignInEvent.SignedIn ->
+                    is CruxSignInEvent.SignedIn -> {
                         _uiState.update { it.copy(busyProvider = null, notice = outcomeNotice(event.outcome)) }
-                    is CruxSignInEvent.Failed ->
+                        _messages.emit(signInMessage(event.outcome))
+                    }
+                    is CruxSignInEvent.Failed -> {
                         _uiState.update { it.copy(busyProvider = null, error = event.message) }
+                        _messages.emit(event.message)
+                    }
                 }
             }
         }
     }
+
+    /**
+     * One-shot text for the screen to toast.
+     *
+     * Connecting and signing out both change the account under you, and the row rearranging is
+     * a thin thing to infer that from — especially connecting, which returns from the browser.
+     */
+    private val _messages = MutableSharedFlow<String>()
+    val messages: SharedFlow<String> = _messages.asSharedFlow()
 
     /** Refreshes in the background; the cached account stays on screen meanwhile. */
     fun revalidate() {
@@ -124,8 +137,11 @@ class AccountViewModel @Inject constructor(
             try {
                 repository.unlinkProvider(provider)
                 _uiState.update { it.copy(busyProvider = null) }
+                _messages.emit("${providerLabel(provider)} disconnected")
             } catch (e: Exception) {
-                _uiState.update { it.copy(busyProvider = null, error = e.message ?: "Could not disconnect") }
+                val message = e.message ?: "Could not disconnect"
+                _uiState.update { it.copy(busyProvider = null, error = message) }
+                _messages.emit(message)
             }
         }
     }
@@ -158,6 +174,7 @@ class AccountViewModel @Inject constructor(
             _uiState.update { it.copy(signingOut = true, error = null, notice = null) }
             repository.signOut()
             _uiState.update { it.copy(signingOut = false) }
+            _messages.emit("Signed out")
         }
     }
 
@@ -178,6 +195,21 @@ class AccountViewModel @Inject constructor(
  * Explains a login that moved you between accounts. Saying nothing is what made the flow
  * feel arbitrary — the account silently changed and the UI never mentioned it.
  */
+/**
+ * A short line for a toast, saying what a sign-in did.
+ *
+ * Every outcome gets one, unlike [outcomeNotice], which speaks only when something surprising
+ * happened and stays silent on the ordinary path. A toast that never fires on success reads as
+ * a sign-in that did not work.
+ */
+internal fun signInMessage(outcome: String?): String = when (outcome) {
+    "signup" -> "Account created"
+    "link" -> "Account connected"
+    "switch" -> "Signed in as the account that already had it"
+    "absorb" -> "Accounts merged"
+    else -> "Signed in"
+}
+
 internal fun outcomeNotice(outcome: String?): String? = when (outcome) {
     "switch" -> "That account was already signed in with elsewhere, so you are now signed in " +
         "as it. Anything you had linked before stayed where it was."

@@ -9,6 +9,7 @@ import casa.crux.app.data.crux.CruxIdentity
 import casa.crux.app.data.crux.CruxIntent
 import casa.crux.app.ui.screens.account.outcomeNotice
 import casa.crux.app.ui.screens.account.providerLabel
+import casa.crux.app.ui.screens.account.signInMessage
 import casa.crux.app.data.crux.CruxTemplate
 import casa.crux.app.data.crux.CruxWorkspace
 import org.junit.Assert.assertEquals
@@ -190,6 +191,20 @@ class DeploymentsLogicTest {
                 ?.let { CruxIdentity(provider = it, username = "polats") },
             providers = configured.associateWith { true },
         )
+
+    @Test
+    fun `every sign-in outcome says something, including the ordinary one`() {
+        // outcomeNotice speaks only when something surprising happened. A toast that stays
+        // silent on success reads as a sign-in that did not work, so this one always talks.
+        assertEquals("Signed in", signInMessage("signin"))
+        assertEquals("Account created", signInMessage("signup"))
+        assertEquals("Account connected", signInMessage("link"))
+        assertTrue(signInMessage("switch").isNotBlank())
+        assertTrue(signInMessage("absorb").isNotBlank())
+        // An outcome the server grows later must still produce a message, not an empty toast.
+        assertEquals("Signed in", signInMessage("something-new"))
+        assertEquals("Signed in", signInMessage(null))
+    }
 
     @Test
     fun `an account-changing login is explained rather than silent`() {
