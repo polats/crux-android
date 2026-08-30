@@ -80,12 +80,27 @@ data class CruxGitHubStatus(
 @Serializable
 data class CruxWorkspace(val id: String, val name: String? = null)
 
+/** One of the user's GitHub repositories, offered as a space's starting checkout. */
+@Serializable
+data class CruxRepo(
+    val repo: String,
+    @SerialName("private") val isPrivate: Boolean = false,
+    val defaultBranch: String = "",
+) {
+    val shortName: String get() = repo.substringAfterLast('/')
+}
+
+@Serializable
+data class CruxRepoList(val repositories: List<CruxRepo> = emptyList())
+
 @Serializable
 data class CruxDeployment(
     val id: String,
     val provider: String = "huggingface",
     val repoId: String? = null,
     val template: CruxTemplate? = null,
+    /** `owner/name` checked out in this space on first connect, if one was chosen. */
+    val workspaceRepo: String? = null,
     val username: String = "opencode",
     val state: String = "QUEUED",
     val error: String? = null,
@@ -114,6 +129,8 @@ data class CruxConnection(
      */
     val githubToken: String? = null,
     val needsToken: Boolean = false,
+    /** The repository to check out, if this space was created with one. */
+    val workspaceRepo: String? = null,
     /**
      * A codespace stops itself when idle. Asking for a connection starts it again, but a resume
      * takes about 17 seconds, so the server answers straight away with `ready = false` and the

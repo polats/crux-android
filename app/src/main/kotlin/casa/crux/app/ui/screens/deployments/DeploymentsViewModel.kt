@@ -12,6 +12,7 @@ import casa.crux.app.data.crux.CruxDeployment
 import casa.crux.app.data.crux.CruxDeploymentStatus
 import casa.crux.app.data.crux.CruxIdentity
 import casa.crux.app.data.crux.CruxIntent
+import casa.crux.app.data.crux.CruxRepo
 import casa.crux.app.data.crux.CruxRepository
 import casa.crux.app.data.crux.CruxTemplate
 import casa.crux.app.data.crux.CruxUnauthorizedException
@@ -44,9 +45,13 @@ data class DeploymentsUiState(
     val templates: List<CruxTemplate> = emptyList(),
     val defaultTemplate: CruxTemplate? = null,
     val workspaces: List<CruxWorkspace> = emptyList(),
+    /** The user's GitHub repositories, one of which a new space can start from. */
+    val repositories: List<CruxRepo> = emptyList(),
     val isLoading: Boolean = true,
     val isCreating: Boolean = false,
     val busyId: String? = null,
+    /** What the busy space is doing, when it is doing something worth naming. */
+    val busyNote: String? = null,
     val error: String? = null,
     val showCreateDialog: Boolean = false,
     /** Providers the server actually has configured; empty until we have asked. */
@@ -142,9 +147,13 @@ class DeploymentsViewModel @Inject constructor(
                 val accountAsync = async { repository.refreshAccount() }
                 val deploymentsAsync = async { repository.deployments() }
                 val templatesAsync = async { runCatching { repository.templates() }.getOrNull() }
+                // Only needed by the create dialog, but fetched with everything else so the
+                // list is already there when it opens rather than filling in underneath.
+                val reposAsync = async { runCatching { repository.githubRepositories() }.getOrDefault(emptyList()) }
                 val account = accountAsync.await()
                 val deployments = deploymentsAsync.await()
                 val templates = templatesAsync.await()
+                val repositories = reposAsync.await()
                 val workspaces = if (account.activeProvider == "railway") {
                     runCatching { repository.workspaces() }.getOrDefault(emptyList())
                 } else {
@@ -158,6 +167,7 @@ class DeploymentsViewModel @Inject constructor(
                         templates = templates?.templates.orEmpty(),
                         defaultTemplate = templates?.default,
                         workspaces = workspaces,
+                        repositories = repositories,
                         availableProviders = configuredProviders(account),
                         isLoading = false,
                     )
@@ -230,17 +240,21 @@ class DeploymentsViewModel @Inject constructor(
 
     fun connect(deployment: CruxDeployment) {
         viewModelScope.launch {
-            _uiState.update { it.copy(busyId = deployment.id, error = null) }
+            _uiState.update { it.copy(busyId = deployment.id, busyNote = null, error = null) }
             try {
-                val server = repository.connect(deployment)
+                // Cloning a repository into a fresh space is the slowest thing connect does,
+                // and silence for a minute reads as a hang.
+                val server = repository.connect(deployment) { note ->
+                    _uiState.update { it.copy(busyNote = note.take(80)) }
+                }
                 startConnectionService(server)
-                _uiState.update { it.copy(busyId = null) }
+                _uiState.update { it.copy(busyId = null, busyNote = null) }
                 _connected.emit(server)
             } catch (e: CruxUnauthorizedException) {
                 signedOut(e)
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to connect deployment", e)
-                _uiState.update { it.copy(busyId = null, error = e.message ?: "Could not connect") }
+                _uiState.update { it.copy(busyId = null, busyNote = null, error = e.message ?: "Could not connect") }
             }
         }
     }

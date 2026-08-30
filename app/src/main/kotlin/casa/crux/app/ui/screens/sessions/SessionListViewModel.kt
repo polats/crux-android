@@ -7,6 +7,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import casa.crux.app.data.api.FileNode
+import casa.crux.app.data.repository.ServerRepository
+import kotlinx.coroutines.flow.first
 import casa.crux.app.data.api.OpenCodeApi
 import casa.crux.app.data.api.ServerConnection
 import casa.crux.app.data.repository.EventReducer
@@ -160,6 +162,7 @@ class SessionListViewModel @Inject constructor(
     private val eventReducer: EventReducer,
     private val api: OpenCodeApi,
     private val settingsRepository: SettingsRepository,
+    private val serverRepository: ServerRepository,
 ) : ViewModel() {
 
     val serverUrl: String = savedStateHandle.get<String>("serverUrl").orEmpty()
@@ -417,6 +420,12 @@ class SessionListViewModel @Inject constructor(
         }
     }
 
+    /** The checkout this server was created with, if it has one. */
+    private suspend fun defaultDirectory(): String? =
+        runCatching {
+            serverRepository.getAllServers().first().firstOrNull { it.id == serverId }?.defaultDirectory
+        }.getOrNull()
+
     private fun loadHomeDir() {
         viewModelScope.launch {
             getHomeDirectory()
@@ -426,7 +435,10 @@ class SessionListViewModel @Inject constructor(
     fun createNewSession(directory: String? = null) {
         viewModelScope.launch {
             try {
-                val session = api.createSession(conn, directory = directory)
+                // A space created from a repository starts its sessions in that checkout,
+                // rather than wherever the server itself happens to be running.
+                val target = directory ?: defaultDirectory()
+                val session = api.createSession(conn, directory = target)
                 // The SSE stream should pick up the new session, but also add directly
                 eventReducer.setSessions(serverId, listOf(session))
                 if (BuildConfig.DEBUG) Log.d(TAG, "Created new session: ${session.id}")

@@ -785,6 +785,8 @@ Tokens: ~%4$d -&gt; ~%5$d</string>
     <string name="deployments_field_template_default">Default</string>
     <string name="deployments_field_password">OpenCode password (optional)</string>
     <string name="deployments_field_password_hint">Leave empty and one is generated for you</string>
+    <string name="deployments_field_repo">Start from a repository</string>
+    <string name="deployments_field_repo_none">Empty space</string>
     <string name="deployments_advanced">Advanced</string>
     <string name="deployments_more_actions">More actions</string>
     <string name="deployments_copy_url">Copy address</string>

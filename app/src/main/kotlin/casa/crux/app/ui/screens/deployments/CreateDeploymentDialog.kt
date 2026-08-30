@@ -63,6 +63,7 @@ fun CreateDeploymentDialog(
     var suggestionSpent by rememberSaveable { mutableStateOf(false) }
     var password by remember { mutableStateOf("") }
     var showAdvanced by rememberSaveable { mutableStateOf(false) }
+    var workspaceRepo by rememberSaveable { mutableStateOf<String?>(null) }
     val notConnected = stringResource(R.string.deployments_provider_unconnected_suffix)
     // Keyed on the list: the workspaces arrive after the dialog opens, and a plain remember
     // would hold the null it was born with and leave Create disabled forever.
@@ -154,6 +155,20 @@ fun CreateDeploymentDialog(
                         },
                 )
 
+                if (state.repositories.isNotEmpty()) {
+                    // Beside the name rather than under Advanced: what a space starts with is
+                    // the decision worth making here, and an empty one is only the default.
+                    val none = stringResource(R.string.deployments_field_repo_none)
+                    Picker(
+                        label = stringResource(R.string.deployments_field_repo),
+                        selected = workspaceRepo ?: none,
+                        options = listOf(none) + state.repositories.map { it.repo },
+                        onSelect = { index ->
+                            workspaceRepo = state.repositories.getOrNull(index - 1)?.repo
+                        },
+                    )
+                }
+
                 // A name is the only thing anyone usually supplies. The rest have working
                 // defaults — first workspace, default template, generated password — so they
                 // are here for the times you want them rather than in the way every time.
@@ -219,6 +234,7 @@ fun CreateDeploymentDialog(
                         workspace = workspace,
                         template = template,
                         password = password,
+                        workspaceRepo = workspaceRepo,
                     )
                     if (request != null) onCreate(request)
                 },
@@ -268,8 +284,10 @@ internal fun buildRequest(
     workspace: CruxWorkspace?,
     template: CruxTemplate?,
     password: String,
+    workspaceRepo: String? = null,
 ): CruxCreateRequest? {
     val cleanPassword = password.takeIf { it.isNotBlank() }
+    val cleanRepo = workspaceRepo?.takeIf { it.isNotBlank() }
     return when (provider) {
         "railway" -> {
             val id = workspace?.id ?: return null
@@ -279,6 +297,7 @@ internal fun buildRequest(
                 workspaceId = id,
                 password = cleanPassword,
                 templateId = template?.id,
+                workspaceRepo = cleanRepo,
             )
         }
         "huggingface" -> {
@@ -287,6 +306,7 @@ internal fun buildRequest(
                 repoId = repoId,
                 password = cleanPassword,
                 templateId = template?.id,
+                workspaceRepo = cleanRepo,
             )
         }
         "github" -> {
@@ -295,6 +315,7 @@ internal fun buildRequest(
                 name = name.trim(),
                 password = cleanPassword,
                 templateId = template?.id,
+                workspaceRepo = cleanRepo,
             )
         }
         else -> null

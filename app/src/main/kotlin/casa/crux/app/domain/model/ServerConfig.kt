@@ -24,7 +24,14 @@ data class ServerConfig(
      * with an eight-hour life has no business in a DataStore-persisted, sync-exported model,
      * which is why only the id is stored here.
      */
-    val cruxDeploymentId: String? = null
+    val cruxDeploymentId: String? = null,
+    /**
+     * Where new sessions start, when this server was created from a repository.
+     *
+     * Sent as `x-opencode-directory`, which is how opencode resolves a session's project. Null
+     * for a server with nothing checked out, which starts wherever the server itself does.
+     */
+    val defaultDirectory: String? = null
 ) {
     val displayName: String
         get() = name ?: url

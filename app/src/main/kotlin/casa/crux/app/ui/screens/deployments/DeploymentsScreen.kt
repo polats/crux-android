@@ -59,6 +59,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
@@ -272,6 +273,7 @@ private fun DeploymentList(
                 DeploymentCard(
                     deployment = deployment,
                     busy = state.busyId == deployment.id,
+                    busyNote = state.busyNote.takeIf { state.busyId == deployment.id },
                     onConnect = { onConnect(deployment) },
                     onRetry = { onRetry(deployment) },
                     onDelete = { onDelete(deployment) },
@@ -292,6 +294,7 @@ private fun DeploymentList(
 private fun DeploymentCard(
     deployment: CruxDeployment,
     busy: Boolean,
+    busyNote: String? = null,
     onConnect: () -> Unit,
     onRetry: () -> Unit,
     onDelete: () -> Unit,
@@ -331,12 +334,16 @@ private fun DeploymentCard(
                 ) {
                     StatusMark(deployment.status)
                     Text(
-                        statusLabel(deployment.status),
+                        // What it is doing right now wins over what it is: "Running" while a
+                        // clone is underway says nothing about the wait.
+                        busyNote ?: statusLabel(deployment.status),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
-                if (deployment.status.isPending) {
+                if (deployment.status.isPending || busyNote != null) {
                     LinearProgressIndicator(
                         modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
                     )

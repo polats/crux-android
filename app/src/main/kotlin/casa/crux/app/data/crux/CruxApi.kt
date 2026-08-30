@@ -126,6 +126,11 @@ class CruxApi @Inject constructor(
         return decode(response.decodeOrThrow())
     }
 
+    /** The user's own GitHub repositories, for choosing one to check out in a space. */
+    suspend fun githubRepositories(token: String): List<CruxRepo> =
+        decode<CruxRepoList>(client.get(url("/api/github?resource=repos")) { bearer(token) }.decodeOrThrow())
+            .repositories
+
     // ----------------------------------------------------------- deployments
 
     suspend fun deployments(token: String): List<CruxDeployment> =
@@ -173,10 +178,14 @@ sealed interface CruxCreateRequest {
     val password: String?
     val templateId: String?
 
+    /** `owner/name` of a repository to check out in the space, or null for an empty one. */
+    val workspaceRepo: String? get() = null
+
     data class HuggingFace(
         val repoId: String,
         override val password: String? = null,
         override val templateId: String? = null,
+        override val workspaceRepo: String? = null,
     ) : CruxCreateRequest
 
     data class Railway(
@@ -184,6 +193,7 @@ sealed interface CruxCreateRequest {
         val workspaceId: String,
         override val password: String? = null,
         override val templateId: String? = null,
+        override val workspaceRepo: String? = null,
     ) : CruxCreateRequest
 
     /**
@@ -194,6 +204,7 @@ sealed interface CruxCreateRequest {
         val name: String,
         override val password: String? = null,
         override val templateId: String? = null,
+        override val workspaceRepo: String? = null,
     ) : CruxCreateRequest
 }
 
@@ -206,6 +217,7 @@ internal fun CruxCreateRequest.toJson(): JsonObject = buildJsonObject {
         }
         is CruxCreateRequest.Codespace -> put("name", JsonPrimitive(name))
     }
+    workspaceRepo?.takeIf { it.isNotBlank() }?.let { put("workspaceRepo", JsonPrimitive(it)) }
     password?.takeIf { it.isNotBlank() }?.let { put("password", JsonPrimitive(it)) }
     templateId?.takeIf { it.isNotBlank() }?.let { put("templateId", JsonPrimitive(it)) }
 }

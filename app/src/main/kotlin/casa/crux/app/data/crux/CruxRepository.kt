@@ -7,6 +7,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
+import casa.crux.app.data.api.ServerConnection
 import casa.crux.app.data.repository.ServerRepository
 import casa.crux.app.data.sync.LocalSyncSecretStore
 import casa.crux.app.domain.model.ServerConfig
@@ -43,6 +44,7 @@ class CruxRepository @Inject constructor(
     private val json: Json,
     private val serverRepository: ServerRepository,
     private val codespaceTokens: CodespaceTokens,
+    private val checkout: WorkspaceCheckout,
 ) {
     private val accountKey = stringPreferencesKey(ACCOUNT_KEY)
 
@@ -195,6 +197,9 @@ class CruxRepository @Inject constructor(
 
     suspend fun templates(): CruxTemplates = api.templates(requireToken())
 
+    /** The user's GitHub repositories, for choosing a space's starting checkout. */
+    suspend fun githubRepositories(): List<CruxRepo> = api.githubRepositories(requireToken())
+
     suspend fun workspaces(): List<CruxWorkspace> = api.workspaces(requireToken())
 
     suspend fun create(request: CruxCreateRequest): CruxDeployment =
@@ -217,7 +222,10 @@ class CruxRepository @Inject constructor(
      * [ServerRepository], every existing screen — chat, terminal, sessions, files — works on
      * a hosted deployment with no further knowledge of Crux.
      */
-    suspend fun connect(deployment: CruxDeployment): ServerConfig {
+    suspend fun connect(
+        deployment: CruxDeployment,
+        onProgress: suspend (String) -> Unit = {},
+    ): ServerConfig {
         val connection = awaitReady(deployment)
         val url = connection.appUrl ?: deployment.appUrl
             ?: throw CruxApiException("This deployment has no address yet")
@@ -230,12 +238,29 @@ class CruxRepository @Inject constructor(
         } else if (connection.needsToken) {
             codespaceTokens.rememberDeployment(url, deployment.id)
         }
+        // Whatever the space was created from is checked out now, before it is saved, so the
+        // first session opened on it already starts in the right place.
+        val checkoutPath = connection.workspaceRepo?.let { repo ->
+            onProgress(repo)
+            val conn = ServerConnection.from(url, connection.username, connection.password)
+            when (val outcome = checkout.ensure(conn, repo, connection.githubToken, onProgress)) {
+                is WorkspaceCheckout.Result.Ready -> outcome.path
+                // Not fatal. The space is running and worth having; the checkout can be retried
+                // by connecting again, and failing the whole connect would strand it.
+                is WorkspaceCheckout.Result.Failed -> {
+                    Log.w(TAG, "Could not check out $repo: ${outcome.message}")
+                    null
+                }
+            }
+        }
+
         val result = serverRepository.upsertLocalServer(
             url = url,
             username = connection.username,
             password = connection.password,
             defaultName = deployment.displayName,
             cruxDeploymentId = deployment.id.takeIf { connection.needsToken },
+            defaultDirectory = checkoutPath,
         )
         result.removedServerIds.forEach { Log.i(TAG, "Replaced a stale entry for the same address") }
         return result.server
