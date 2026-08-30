@@ -234,9 +234,13 @@ class DeploymentsViewModel @Inject constructor(
         }
     }
 
-    fun retry(deployment: CruxDeployment) = act(deployment.id) { repository.retry(deployment.id) }
+    fun retry(deployment: CruxDeployment) =
+        act(deployment.id, done = "Retrying ${deployment.displayName}") { repository.retry(deployment.id) }
 
-    fun delete(deployment: CruxDeployment) = act(deployment.id) { repository.delete(deployment.id) }
+    fun delete(deployment: CruxDeployment) =
+        // Deleting destroys a running server on the provider and cannot be undone, so it is
+        // worth confirming out loud that it happened rather than only by the row vanishing.
+        act(deployment.id, done = "Deleted ${deployment.displayName}") { repository.delete(deployment.id) }
 
     fun connect(deployment: CruxDeployment) {
         viewModelScope.launch {
@@ -290,18 +294,23 @@ class DeploymentsViewModel @Inject constructor(
 
     fun dismissError() = _uiState.update { it.copy(error = null) }
 
-    private fun act(id: String, block: suspend () -> Unit) {
+    private fun act(id: String, done: String? = null, block: suspend () -> Unit) {
         viewModelScope.launch {
             _uiState.update { it.copy(busyId = id, error = null) }
             try {
                 block()
                 _uiState.update { it.copy(busyId = null) }
+                done?.let { _messages.emit(it) }
                 refresh()
             } catch (e: CruxUnauthorizedException) {
                 signedOut(e)
             } catch (e: Exception) {
                 Log.e(TAG, "Deployment action failed", e)
-                _uiState.update { it.copy(busyId = null, error = e.message ?: "That action failed") }
+                val message = e.message ?: "That action failed"
+                _uiState.update { it.copy(busyId = null, error = message) }
+                // A failed delete leaves the row exactly where it was, which on its own reads
+                // as nothing having happened at all.
+                _messages.emit(message)
             }
         }
     }
