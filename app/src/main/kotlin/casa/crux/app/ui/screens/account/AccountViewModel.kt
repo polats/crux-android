@@ -63,6 +63,19 @@ class AccountViewModel @Inject constructor(
     private val _authorizationUrls = MutableSharedFlow<String>()
     val authorizationUrls: SharedFlow<String> = _authorizationUrls.asSharedFlow()
 
+    /**
+     * One-shot text for the screen to toast.
+     *
+     * Declared above init on purpose: repository.events replays its last value, so the collect
+     * in init emits during construction — and a property initialised after init is still null
+     * then, which crashed the screen outright.
+     *
+     * Connecting and signing out both change the account under you, and the row rearranging is
+     * a thin thing to infer that from — especially connecting, which returns from the browser.
+     */
+    private val _messages = MutableSharedFlow<String>()
+    val messages: SharedFlow<String> = _messages.asSharedFlow()
+
     init {
         viewModelScope.launch {
             combine(repository.signedIn, repository.account) { signedIn, account ->
@@ -90,15 +103,6 @@ class AccountViewModel @Inject constructor(
             }
         }
     }
-
-    /**
-     * One-shot text for the screen to toast.
-     *
-     * Connecting and signing out both change the account under you, and the row rearranging is
-     * a thin thing to infer that from — especially connecting, which returns from the browser.
-     */
-    private val _messages = MutableSharedFlow<String>()
-    val messages: SharedFlow<String> = _messages.asSharedFlow()
 
     /** Refreshes in the background; the cached account stays on screen meanwhile. */
     fun revalidate() {

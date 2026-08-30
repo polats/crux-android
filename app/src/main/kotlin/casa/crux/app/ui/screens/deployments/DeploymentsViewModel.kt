@@ -26,6 +26,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -135,9 +136,15 @@ class DeploymentsViewModel @Inject constructor(
             }
             _uiState.update { it.copy(signedIn = true, isLoading = true, error = null) }
             try {
-                val account = repository.refreshAccount()
-                val deployments = repository.deployments()
-                val templates = runCatching { repository.templates() }.getOrNull()
+                // Concurrent, not sequential: none of the three needs another's answer, and
+                // run one after another on serverless they add up to a visible wait. Only the
+                // workspace list has to follow, since it depends on the active provider.
+                val accountAsync = async { repository.refreshAccount() }
+                val deploymentsAsync = async { repository.deployments() }
+                val templatesAsync = async { runCatching { repository.templates() }.getOrNull() }
+                val account = accountAsync.await()
+                val deployments = deploymentsAsync.await()
+                val templates = templatesAsync.await()
                 val workspaces = if (account.activeProvider == "railway") {
                     runCatching { repository.workspaces() }.getOrDefault(emptyList())
                 } else {
@@ -179,8 +186,20 @@ class DeploymentsViewModel @Inject constructor(
     fun switchDeployTarget(provider: String) {
         viewModelScope.launch {
             try {
-                repository.switchProvider(provider)
-                refresh()
+                // POST /api/session answers with the updated account, so the old refresh()
+                // went straight back to GET it again — and then fetched the deployments and
+                // templates too. Four sequential requests, on serverless, before the dropdown
+                // would so much as change its label.
+                val account = repository.switchProvider(provider)
+                _uiState.update { it.copy(account = account, error = null) }
+
+                // Only the workspace list depends on where spaces land. The deployment list
+                // already spans every linked account, and templates are scoped to the user
+                // rather than the provider, so neither changes here.
+                if (account.activeProvider == "railway" && _uiState.value.workspaces.isEmpty()) {
+                    val workspaces = runCatching { repository.workspaces() }.getOrDefault(emptyList())
+                    _uiState.update { it.copy(workspaces = workspaces) }
+                }
             } catch (e: Exception) {
                 _uiState.update { it.copy(error = e.message ?: "Could not switch account") }
             }
