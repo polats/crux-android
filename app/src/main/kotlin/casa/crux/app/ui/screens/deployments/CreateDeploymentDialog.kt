@@ -31,7 +31,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -51,6 +50,7 @@ import casa.crux.app.ui.components.AppDialogActions
 import casa.crux.app.ui.screens.account.LOGIN_PROVIDERS
 import casa.crux.app.ui.screens.account.providerLabel
 import kotlin.random.Random
+import kotlinx.coroutines.delay
 
 /**
  * The web dashboard's create form, as a dialog. Which fields appear depends on the active
@@ -79,6 +79,7 @@ fun CreateDeploymentDialog(
     var password by remember { mutableStateOf("") }
     var showAdvanced by rememberSaveable { mutableStateOf(false) }
     var workspaceRepo by rememberSaveable { mutableStateOf<String?>(null) }
+    var searchingRepo by remember { mutableStateOf(false) }
     val notConnected = stringResource(R.string.deployments_provider_unconnected_suffix)
     // Keyed on the list: the workspaces arrive after the dialog opens, and a plain remember
     // would hold the null it was born with and leave Create disabled forever.
@@ -92,6 +93,17 @@ fun CreateDeploymentDialog(
         (provider != "railway" || workspace != null)
 
     AppDialog(onDismissRequest = onDismiss) {
+        // Searching takes the dialog over rather than opening a second one on top. A Compose
+        // Dialog is its own window, and the outer window keeps input focus — which is why the
+        // search field could be focused and still never raise the keyboard.
+        if (searchingRepo) {
+            RepoSearch(
+                repositories = state.repositories,
+                onPick = { workspaceRepo = it; searchingRepo = false },
+                onCancel = { searchingRepo = false },
+            )
+            return@AppDialog
+        }
         Column(
             modifier = Modifier.padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -173,11 +185,7 @@ fun CreateDeploymentDialog(
                 if (state.repositories.isNotEmpty()) {
                     // Beside the name rather than under Advanced: what a space starts with is
                     // the decision worth making here, and an empty one is only the default.
-                    RepoPicker(
-                        repositories = state.repositories,
-                        selected = workspaceRepo,
-                        onSelect = { workspaceRepo = it },
-                    )
+                    RepoField(selected = workspaceRepo, onOpen = { searchingRepo = true })
                 }
 
                 // A name is the only thing anyone usually supplies. The rest have working
@@ -255,23 +263,13 @@ fun CreateDeploymentDialog(
     }
 }
 
-/**
- * The repository to start from.
- *
- * A field that opens a search dialog, rather than a dropdown with a text field in it. An
- * ExposedDropdownMenu anchors directly under its field, so inside a dialog the menu and the
- * software keyboard between them covered the very text being typed. Its own dialog has room
- * for the query and the results at once.
- */
-@Composable
-private fun RepoPicker(
-    repositories: List<CruxRepo>,
-    selected: String?,
-    onSelect: (String?) -> Unit,
-) {
-    var searching by remember { mutableStateOf(false) }
-    val none = stringResource(R.string.deployments_field_repo_none)
+/** How long the dialog's window needs before it will take focus. Matches OpenProjectDialog. */
+private const val FOCUS_SETTLE_MS = 200L
 
+/** The current choice, and a way into the search. */
+@Composable
+private fun RepoField(selected: String?, onOpen: () -> Unit) {
+    val none = stringResource(R.string.deployments_field_repo_none)
     OutlinedTextField(
         value = selected ?: none,
         onValueChange = {},
@@ -281,26 +279,23 @@ private fun RepoPicker(
         trailingIcon = {
             Icon(Icons.Default.Search, contentDescription = stringResource(R.string.deployments_field_repo_filter))
         },
-        modifier = Modifier
-            .fillMaxWidth()
-            // readOnly swallows taps, so the whole field is made clickable instead.
-            .clickable { searching = true },
+        // readOnly swallows taps, so the whole field is made clickable instead.
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onOpen),
     )
-
-    if (searching) {
-        RepoSearchDialog(
-            repositories = repositories,
-            onPick = { onSelect(it); searching = false },
-            onDismiss = { searching = false },
-        )
-    }
 }
 
+/**
+ * Filtering the repository list, in place of the create form rather than on top of it.
+ *
+ * This lived in its own dialog and the keyboard never came up: a Compose Dialog is a separate
+ * window, and the create dialog underneath kept input focus, so a focused field in the one
+ * above it had nowhere to type. Same window, same focus, no such problem.
+ */
 @Composable
-private fun RepoSearchDialog(
+private fun RepoSearch(
     repositories: List<CruxRepo>,
     onPick: (String?) -> Unit,
-    onDismiss: () -> Unit,
+    onCancel: () -> Unit,
 ) {
     var query by remember { mutableStateOf("") }
     val focus = remember { FocusRequester() }
@@ -310,67 +305,60 @@ private fun RepoSearchDialog(
         if (term.isEmpty()) repositories else repositories.filter { it.repo.contains(term, ignoreCase = true) }
     }
     LaunchedEffect(Unit) {
-        // Two things, and neither alone is enough. The dialog gets its own window, which does
-        // not exist yet in the frame that composes it — requesting focus there silently does
-        // nothing — so this waits for a frame first. And taking focus does not by itself raise
-        // the keyboard, which is why the field was focused but nothing came up.
-        withFrameNanos { }
-        focus.requestFocus()
+        // A delay, not a frame. This is the pattern OpenProjectDialog already uses for the
+        // same job in this app, and a single frame is measurably not enough — the dialog's
+        // window has to settle before it will accept focus, and requesting too early is
+        // silently ignored rather than retried.
+        delay(FOCUS_SETTLE_MS)
+        runCatching { focus.requestFocus() }
         keyboard?.show()
     }
 
-    AppDialog(onDismissRequest = onDismiss) {
-        Column(
-            modifier = Modifier.padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Text(
-                stringResource(R.string.deployments_field_repo),
-                style = MaterialTheme.typography.titleLarge,
-            )
-            OutlinedTextField(
-                value = query,
-                onValueChange = { query = it },
-                singleLine = true,
-                placeholder = { Text(stringResource(R.string.deployments_field_repo_filter)) },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                modifier = Modifier.fillMaxWidth().focusRequester(focus),
-            )
-            LazyColumn(
-                modifier = Modifier.heightIn(max = 320.dp),
-            ) {
-                // Only while nothing is typed. Leaving it in the results was the reason a
-                // search that matched nothing still showed a row, reading as a bad match.
-                if (query.isBlank()) {
-                    item(key = "none") {
-                        RepoRow(
-                            label = stringResource(R.string.deployments_field_repo_none),
-                            isPrivate = false,
-                            onClick = { onPick(null) },
-                        )
-                    }
-                }
-                items(matches, key = { it.repo }) { repository ->
+    Column(
+        modifier = Modifier.padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Text(stringResource(R.string.deployments_field_repo), style = MaterialTheme.typography.titleLarge)
+        OutlinedTextField(
+            value = query,
+            onValueChange = { query = it },
+            singleLine = true,
+            placeholder = { Text(stringResource(R.string.deployments_field_repo_filter)) },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+            modifier = Modifier.fillMaxWidth().focusRequester(focus),
+        )
+        LazyColumn(modifier = Modifier.heightIn(max = 280.dp)) {
+            // Only while nothing is typed. Among the results it meant a search matching
+            // nothing still showed a row, which reads as a match rather than as none.
+            if (query.isBlank()) {
+                item(key = "none") {
                     RepoRow(
-                        label = repository.repo,
-                        isPrivate = repository.isPrivate,
-                        onClick = { onPick(repository.repo) },
+                        label = stringResource(R.string.deployments_field_repo_none),
+                        isPrivate = false,
+                        onClick = { onPick(null) },
                     )
                 }
-                if (matches.isEmpty() && query.isNotBlank()) {
-                    item(key = "no-match") {
-                        Text(
-                            stringResource(R.string.deployments_field_repo_no_match),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(vertical = 12.dp),
-                        )
-                    }
+            }
+            items(matches, key = { it.repo }) { repository ->
+                RepoRow(
+                    label = repository.repo,
+                    isPrivate = repository.isPrivate,
+                    onClick = { onPick(repository.repo) },
+                )
+            }
+            if (matches.isEmpty() && query.isNotBlank()) {
+                item(key = "no-match") {
+                    Text(
+                        stringResource(R.string.deployments_field_repo_no_match),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(vertical = 12.dp),
+                    )
                 }
             }
-            TextButton(onClick = onDismiss, modifier = Modifier.align(Alignment.End)) {
-                Text(stringResource(R.string.cancel))
-            }
+        }
+        TextButton(onClick = onCancel, modifier = Modifier.align(Alignment.End)) {
+            Text(stringResource(R.string.cancel))
         }
     }
 }
