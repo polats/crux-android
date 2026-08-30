@@ -359,8 +359,13 @@ fun SessionListScreen(
                 FloatingActionButton(
                     onClick = {
                         // If there are known projects, show the quick dialog first;
-                        // otherwise go straight to the full directory browser.
-                        if (uiState.sessionGroups.isNotEmpty()) {
+                        // otherwise go straight to the full directory browser — unless this
+                        // space was created from a repository, in which case there is a right
+                        // answer and the browser is the wrong screen to show. It is rooted at
+                        // ~, and a checkout lives under the server's own working directory, so
+                        // a brand-new space offered a browser with no sign of the repository
+                        // that had just been cloned into it.
+                        if (uiState.sessionGroups.isNotEmpty() || checkoutDirectory != null) {
                             showQuickNewSession = true
                         } else {
                             showOpenProject = true

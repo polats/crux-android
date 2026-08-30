@@ -92,7 +92,7 @@ class WorkspaceCheckout @Inject constructor(
                         ?.let { it.groupValues[1].trim() }
                         ?.takeIf { it.startsWith("/") }
                         ?.let { resolved = it }
-                    line.trim().takeIf {
+                    plainText(line).takeIf {
                         it.isNotEmpty() &&
                             !it.startsWith(CLONE_MARKER_PREFIX) &&
                             !it.startsWith(CLONE_PATH_PREFIX)
@@ -165,3 +165,18 @@ internal val CLONE_MARKER = Regex("$CLONE_MARKER_PREFIX(\\d+)")
 /** How the shell reports the absolute path it cloned into. */
 internal const val CLONE_PATH_PREFIX = "CRUX_CLONE_PATH_"
 internal val CLONE_PATH_MARKER = Regex("$CLONE_PATH_PREFIX(/\\S*)")
+
+/**
+ * A terminal line as something worth showing a person.
+ *
+ * This is a PTY, so its output carries colour codes, cursor moves and the progress-bar
+ * redraws git uses for "Receiving objects" — put on a card's status line unfiltered, they read
+ * as garbled text rather than as progress.
+ */
+internal fun plainText(line: String): String = line
+    .replace(ANSI_ESCAPE, "")
+    .replace(CONTROL_CHARS, "")
+    .trim()
+
+private val ANSI_ESCAPE = Regex("\u001B(?:\\[[0-?]*[ -/]*[@-~]|\\][^\u0007]*\u0007|[@-Z\\\\-_])")
+private val CONTROL_CHARS = Regex("[\u0000-\u0008\u000B-\u001F\u007F]")
