@@ -573,7 +573,6 @@ fun NavGraph(
         // ============ About Screen ============
         composable(Screen.Deployments.route) {
             DeploymentsScreen(
-                onNavigateToAccount = { navController.navigate(Screen.Account.route) },
                 onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
                 onServerConnected = { server ->
                     // Straight into the space. Connecting used to land on the server list,

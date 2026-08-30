@@ -48,6 +48,7 @@ import casa.crux.app.R
 import casa.crux.app.data.crux.CruxDeployment
 import casa.crux.app.domain.model.ServerConfig
 import casa.crux.app.ui.components.ProviderIcon
+import casa.crux.app.ui.screens.account.MAIN_PROVIDER
 import casa.crux.app.ui.components.AppCardShape
 import casa.crux.app.ui.components.AppDialog
 import casa.crux.app.ui.components.AppPrimaryButton
@@ -66,7 +67,6 @@ import kotlinx.coroutines.flow.SharedFlow
 @Composable
 fun DeploymentsScreen(
     onServerConnected: (ServerConfig) -> Unit,
-    onNavigateToAccount: () -> Unit = {},
     onNavigateToSettings: () -> Unit = {},
     viewModel: DeploymentsViewModel = hiltViewModel(),
 ) {
@@ -116,7 +116,12 @@ fun DeploymentsScreen(
                     CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                 }
                 !state.signedIn -> SignedOut(
-                    onSignIn = onNavigateToAccount,
+                    // Straight into GitHub's authorization rather than by way of the Accounts
+                    // screen, which had exactly one button on it and nothing else to decide.
+                    onSignIn = { viewModel.signIn(MAIN_PROVIDER) },
+                    // Only the list renders state.error, and it is not on screen here — so a
+                    // sign-in that failed to start would say nothing at all.
+                    error = state.error,
                     modifier = Modifier.align(Alignment.Center),
                 )
                 else -> DeploymentList(
@@ -144,6 +149,7 @@ fun DeploymentsScreen(
 @Composable
 private fun SignedOut(
     onSignIn: () -> Unit,
+    error: String? = null,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -161,6 +167,13 @@ private fun SignedOut(
         Text(stringResource(R.string.deployments_signed_out_title), style = MaterialTheme.typography.titleMedium)
         AppPrimaryButton(onClick = onSignIn) {
             Text(stringResource(R.string.deployments_signed_out_action))
+        }
+        error?.let {
+            Text(
+                it,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+            )
         }
     }
 }
