@@ -460,6 +460,7 @@ fun NavGraph(
                 onNavigateToDiagnostics = { navController.navigate(Screen.Diagnostics.route) },
                 onNavigateToSync = { navController.navigate(Screen.SyncSettings.route) },
                 onNavigateToLocalServers = { navController.navigate(Screen.Home.route) },
+                onNavigateToAccount = { navController.navigate(Screen.Account.route) },
             )
         }
 

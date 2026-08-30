@@ -681,6 +681,7 @@ Tokens: ~%4$d -&gt; ~%5$d</string>
     <string name="about_check_updates_desc">Check GitHub for a newer release</string>
 
     <!-- Settings sync -->
+    <string name="settings_accounts_desc">Sign in, and connect Hugging Face or Railway</string>
     <string name="settings_local_servers">Local servers</string>
     <string name="settings_local_servers_desc">Servers you add by hand, for an opencode you run yourself</string>
     <string name="sync_title">Settings sync</string>
@@ -755,7 +756,7 @@ Tokens: ~%4$d -&gt; ~%5$d</string>
     <string name="sync_privacy_notice">Messages, drafts, logs, provider tokens, local-runtime credentials, and sync credentials are never uploaded. Server passwords are included only when encrypted password sync is enabled.</string>
 
     <!-- Deployments (crux.casa) -->
-    <string name="deployments_title">Spaces</string>
+    <string name="deployments_title">Crux</string>
     <string name="deployments_create">New space</string>
     <string name="deployments_create_title">Create a space</string>
     <string name="deployments_create_no_target">Sign in with Hugging Face or Railway to create a space. A GitHub sign-in can read private templates but cannot host one.</string>
@@ -787,7 +788,7 @@ Tokens: ~%4$d -&gt; ~%5$d</string>
     <string name="deployments_account_open">Accounts</string>
     <string name="deployments_account_disconnect">Disconnect</string>
     <string name="deployments_account_connect">Connect</string>
-    <string name="deployments_signed_out_action">Sign in</string>
+    <string name="deployments_signed_out_action">Sign in with GitHub</string>
     <string name="deployments_account_blocked_last">Your only account. Sign out instead.</string>
     <string name="deployments_account_blocked_spaces">Delete this account\'s spaces first</string>
     <string name="deployments_account_sign_in">Sign in with %1$s</string>

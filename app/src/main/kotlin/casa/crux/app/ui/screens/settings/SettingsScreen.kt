@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.BatteryChargingFull
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.ColorLens
@@ -92,6 +93,7 @@ fun SettingsScreen(
     onNavigateToSync: () -> Unit = {},
     onNavigateToAbout: () -> Unit = {},
     onNavigateToLocalServers: () -> Unit = {},
+    onNavigateToAccount: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val currentLanguage by viewModel.appLanguage.collectAsState()
@@ -188,6 +190,15 @@ fun SettingsScreen(
                     Icon(Icons.Default.Language, contentDescription = null)
                 },
                 modifier = Modifier.clickable { showLanguageDialog = true }
+            )
+
+            // Signing in, and connecting Hugging Face or Railway onto that account. Used to
+            // sit in the Spaces top bar, which is not where anyone looks for it.
+            ListItem(
+                headlineContent = { Text(stringResource(R.string.deployments_account_title)) },
+                supportingContent = { Text(stringResource(R.string.settings_accounts_desc)) },
+                leadingContent = { Icon(Icons.Default.AccountCircle, contentDescription = null) },
+                modifier = Modifier.clickable { onNavigateToAccount() },
             )
 
             // Servers added by hand, which used to be the app's front page. Spaces covers the
