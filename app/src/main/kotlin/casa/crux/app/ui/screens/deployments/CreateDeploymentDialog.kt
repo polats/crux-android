@@ -1,14 +1,20 @@
 package casa.crux.app.ui.screens.deployments
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -19,12 +25,16 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -244,76 +254,131 @@ fun CreateDeploymentDialog(
 }
 
 /**
- * The repository to start from, with a filter.
+ * The repository to start from.
  *
- * A plain dropdown was fine for three templates and unusable for a hundred repositories, which
- * is what `GET /user/repos` returns. Typing filters; the field doubles as the search box, so
- * there is nothing extra on screen when the list is short.
+ * A field that opens a search dialog, rather than a dropdown with a text field in it. An
+ * ExposedDropdownMenu anchors directly under its field, so inside a dialog the menu and the
+ * software keyboard between them covered the very text being typed. Its own dialog has room
+ * for the query and the results at once.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun RepoPicker(
     repositories: List<CruxRepo>,
     selected: String?,
     onSelect: (String?) -> Unit,
 ) {
-    var expanded by remember { mutableStateOf(false) }
-    var query by remember { mutableStateOf("") }
+    var searching by remember { mutableStateOf(false) }
     val none = stringResource(R.string.deployments_field_repo_none)
 
-    // While closed the field shows the choice; while open it shows what is being typed, so the
-    // selection is not destroyed by browsing away from it and changing nothing.
-    val text = if (expanded) query else selected ?: none
-    val matches = remember(repositories, query, expanded) {
-        if (!expanded || query.isBlank()) repositories
-        else repositories.filter { it.repo.contains(query.trim(), ignoreCase = true) }
-    }
-
-    ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = { open ->
-            expanded = open
-            // Opening starts from empty rather than from the current selection, which would
-            // otherwise filter the list down to the one thing already chosen.
-            if (open) query = ""
+    OutlinedTextField(
+        value = selected ?: none,
+        onValueChange = {},
+        readOnly = true,
+        singleLine = true,
+        label = { Text(stringResource(R.string.deployments_field_repo)) },
+        trailingIcon = {
+            Icon(Icons.Default.Search, contentDescription = stringResource(R.string.deployments_field_repo_filter))
         },
-    ) {
-        OutlinedTextField(
-            value = text,
-            onValueChange = { query = it; expanded = true },
-            label = { Text(stringResource(R.string.deployments_field_repo)) },
-            singleLine = true,
-            placeholder = { Text(stringResource(R.string.deployments_field_repo_filter)) },
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-            modifier = Modifier.fillMaxWidth().menuAnchor(),
+        modifier = Modifier
+            .fillMaxWidth()
+            // readOnly swallows taps, so the whole field is made clickable instead.
+            .clickable { searching = true },
+    )
+
+    if (searching) {
+        RepoSearchDialog(
+            repositories = repositories,
+            onPick = { onSelect(it); searching = false },
+            onDismiss = { searching = false },
         )
-        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            DropdownMenuItem(
-                text = { Text(none) },
-                onClick = { onSelect(null); expanded = false },
+    }
+}
+
+@Composable
+private fun RepoSearchDialog(
+    repositories: List<CruxRepo>,
+    onPick: (String?) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var query by remember { mutableStateOf("") }
+    val focus = remember { FocusRequester() }
+    val matches = remember(repositories, query) {
+        val term = query.trim()
+        if (term.isEmpty()) repositories else repositories.filter { it.repo.contains(term, ignoreCase = true) }
+    }
+    LaunchedEffect(Unit) { focus.requestFocus() }
+
+    AppDialog(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                stringResource(R.string.deployments_field_repo),
+                style = MaterialTheme.typography.titleLarge,
             )
-            matches.forEach { repository ->
-                DropdownMenuItem(
-                    text = { Text(repository.repo) },
-                    trailingIcon = {
-                        if (repository.isPrivate) {
-                            Icon(
-                                Icons.Default.Lock,
-                                contentDescription = stringResource(R.string.deployments_repo_private),
-                                modifier = Modifier.size(14.dp),
-                            )
-                        }
-                    },
-                    onClick = { onSelect(repository.repo); expanded = false },
-                )
+            OutlinedTextField(
+                value = query,
+                onValueChange = { query = it },
+                singleLine = true,
+                placeholder = { Text(stringResource(R.string.deployments_field_repo_filter)) },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                modifier = Modifier.fillMaxWidth().focusRequester(focus),
+            )
+            LazyColumn(
+                modifier = Modifier.heightIn(max = 320.dp),
+            ) {
+                // Only while nothing is typed. Leaving it in the results was the reason a
+                // search that matched nothing still showed a row, reading as a bad match.
+                if (query.isBlank()) {
+                    item(key = "none") {
+                        RepoRow(
+                            label = stringResource(R.string.deployments_field_repo_none),
+                            isPrivate = false,
+                            onClick = { onPick(null) },
+                        )
+                    }
+                }
+                items(matches, key = { it.repo }) { repository ->
+                    RepoRow(
+                        label = repository.repo,
+                        isPrivate = repository.isPrivate,
+                        onClick = { onPick(repository.repo) },
+                    )
+                }
+                if (matches.isEmpty() && query.isNotBlank()) {
+                    item(key = "no-match") {
+                        Text(
+                            stringResource(R.string.deployments_field_repo_no_match),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(vertical = 12.dp),
+                        )
+                    }
+                }
             }
-            if (matches.isEmpty()) {
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.deployments_field_repo_no_match)) },
-                    enabled = false,
-                    onClick = {},
-                )
+            TextButton(onClick = onDismiss, modifier = Modifier.align(Alignment.End)) {
+                Text(stringResource(R.string.cancel))
             }
+        }
+    }
+}
+
+@Composable
+private fun RepoRow(label: String, isPrivate: Boolean, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        if (isPrivate) {
+            Icon(
+                Icons.Default.Lock,
+                contentDescription = stringResource(R.string.deployments_repo_private),
+                modifier = Modifier.size(14.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
