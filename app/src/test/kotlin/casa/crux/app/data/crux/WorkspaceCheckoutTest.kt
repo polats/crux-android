@@ -20,6 +20,30 @@ class WorkspaceCheckoutTest {
     }
 
     @Test
+    fun `the shell expands the credential rather than passing its name`() {
+        val command = cloneCommand("polats/secret", "secret", authenticated = true)
+        // Single quotes round the clone URL stopped the shell expanding $CRUX_TOKEN, so git
+        // was handed that literal text as the password. Public repositories cloned anyway,
+        // needing no credential, which hid it; private ones failed with "Authentication
+        // failed" while the very same token read them over the API.
+        val clone = command.substringAfter("git clone")
+        assertTrue(
+            "the credential-bearing url must be double quoted",
+            clone.contains("\"https://x-access-token:\$CRUX_TOKEN@github.com/polats/secret.git\""),
+        )
+        assertFalse(
+            "single quotes would pass the variable's name instead of its value",
+            clone.contains("'https://x-access-token:\$CRUX_TOKEN"),
+        )
+    }
+
+    @Test
+    fun `a public clone url stays single quoted, having nothing to expand`() {
+        val clone = cloneCommand("polats/open", "open", authenticated = false).substringAfter("git clone")
+        assertTrue(clone.contains("'https://github.com/polats/open.git'"))
+    }
+
+    @Test
     fun `the token is stripped from the remote after cloning`() {
         val command = cloneCommand("polats/secret", "secret", authenticated = true)
         // Left in place it would sit in .git/config, long-lived and with `repo` scope, inside a

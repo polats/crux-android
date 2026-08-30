@@ -233,6 +233,10 @@ class CruxRepository @Inject constructor(
         // token. Recorded before the server is saved, so the first health check already carries
         // one rather than being bounced to a login page.
         val githubToken = connection.githubToken
+        // The first four characters only, which name the token's kind without revealing it:
+        // gho_ is an OAuth App user token, ghu_ one issued by a GitHub App. They behave
+        // differently on organisation repositories and are otherwise indistinguishable.
+        githubToken?.let { Log.i(TAG, "github token kind: ${it.take(4)}") }
         if (connection.needsToken && githubToken != null) {
             codespaceTokens.remember(url, deployment.id, githubToken)
         } else if (connection.needsToken) {

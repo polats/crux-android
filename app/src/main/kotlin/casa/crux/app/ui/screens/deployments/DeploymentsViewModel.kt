@@ -154,6 +154,14 @@ class DeploymentsViewModel @Inject constructor(
                 val deployments = deploymentsAsync.await()
                 val templates = templatesAsync.await()
                 val repositories = reposAsync.await()
+                // Which accounts the listing can actually see. An organisation that has not
+                // approved the OAuth App is not reported as an error — its repositories are
+                // simply absent, which is indistinguishable from having none.
+                Log.i(
+                    TAG,
+                    "repositories: ${repositories.size} across " +
+                        repositories.map { it.repo.substringBefore('/') }.distinct().sorted()
+                )
                 val workspaces = if (account.activeProvider == "railway") {
                     runCatching { repository.workspaces() }.getOrDefault(emptyList())
                 } else {

@@ -75,6 +75,9 @@ class WorkspaceCheckout @Inject constructor(
         // git's own words. Without them a failure is just an exit code, and 128 covers
         // everything from a missing repository to a directory already in the way.
         val transcript = ArrayDeque<String>()
+        // Diagnostics are collected before the display filter strips them, which is where they
+        // were being lost.
+        val diagnostics = mutableListOf<String>()
         try {
             // Read the token into a shell variable rather than writing it into the command:
             // `read -rs` does not echo, so the credential never appears in the terminal's
@@ -87,16 +90,21 @@ class WorkspaceCheckout @Inject constructor(
 
             socket.readLoop { text ->
                 text.lineSequence().forEach { line ->
+                    val clean = plainText(line)
+                    if (clean.startsWith(CRED_LEN_PREFIX) || clean.startsWith(API_PROBE_PREFIX)) {
+                        diagnostics += clean
+                    }
                     CLONE_MARKER.find(line)?.let { outcome = it.groupValues[1].toIntOrNull() }
                     CLONE_PATH_MARKER.find(line)
                         ?.let { it.groupValues[1].trim() }
                         ?.takeIf { it.startsWith("/") }
                         ?.let { resolved = it }
-                    plainText(line).takeIf {
+                    clean.takeIf {
                         it.isNotEmpty() &&
                             !it.startsWith(CLONE_MARKER_PREFIX) &&
                             !it.startsWith(CLONE_PATH_PREFIX) &&
-                            !it.startsWith(CRED_LEN_PREFIX)
+                            !it.startsWith(CRED_LEN_PREFIX) &&
+                            !it.startsWith(API_PROBE_PREFIX)
                     }
                         ?.let {
                             onProgress(it)
@@ -113,8 +121,7 @@ class WorkspaceCheckout @Inject constructor(
 
         // The last line git printed says more than the code: "already exists and is not an
         // empty directory" and "repository not found" are both exit 128.
-        transcript.firstOrNull { it.startsWith(CRED_LEN_PREFIX) }
-            ?.let { Log.i(TAG, "credential reached the shell: $it") }
+        diagnostics.forEach { Log.i(TAG, "diagnostic: $it") }
         val reason = transcript.lastOrNull { it.contains("fatal", ignoreCase = true) }
             ?: transcript.lastOrNull()
         return when (outcome) {
@@ -147,14 +154,28 @@ internal fun cloneCommand(repo: String, path: String, authenticated: Boolean): S
     return buildString {
         // The length only, never the value: enough to tell "the shell never received the
         // credential" from "the credential was refused", which look identical from outside.
-        if (authenticated) append("echo $CRED_LEN_PREFIX\${#CRUX_TOKEN}; ")
+        if (authenticated) {
+            append("echo $CRED_LEN_PREFIX\${#CRUX_TOKEN}; ")
+            // Whether the same credential can read the repository through the API, from the
+            // same machine that is about to clone it. Distinguishes a token the repository
+            // refuses from one git is failing to present, which look identical otherwise.
+            append(
+                "echo $API_PROBE_PREFIX\$(curl -s -o /dev/null -w '%{http_code}' " +
+                    "-H \"Authorization: token \$CRUX_TOKEN\" https://api.github.com/repos/$repo); "
+            )
+        }
         append("if [ -d '$path/.git' ]; then rc=0; ")
         // A clone that died partway leaves a directory behind, and git refuses to clone into
         // one that already exists — so every retry failed with 128 where the first attempt had
         // failed with something else. Only ever removed when it holds no repository and
         // nothing else, so work already in the space is never destroyed.
         append("else rmdir '$path' 2>/dev/null; ")
-        append("git clone --depth 1 '$source' '$path'; rc=\$?; fi; ")
+        // The source is double-quoted precisely when it carries $CRUX_TOKEN. Single quotes
+        // stop the shell expanding it, so git was handed the literal text "$CRUX_TOKEN" as a
+        // password — which fails on a private repository and is invisible on a public one,
+        // where no credential is needed at all.
+        val quotedSource = if (authenticated) "\"$source\"" else "'$source'"
+        append("git clone --depth 1 $quotedSource '$path'; rc=\$?; fi; ")
         // Only when there was one: a public clone should mention no credential at all.
         if (authenticated) append("unset CRUX_TOKEN; ")
         append("if [ \$rc -eq 0 ]; then git -C '$path' remote set-url origin '$origin' 2>/dev/null; ")
@@ -189,3 +210,6 @@ private val CONTROL_CHARS = Regex("[\u0000-\u0008\u000B-\u001F\u007F]")
 
 /** Reports the credential's length, never its value, so a lost token is told from a refused one. */
 internal const val CRED_LEN_PREFIX = "CRUX_CRED_LEN_"
+
+/** The HTTP status the same credential gets reading the repository through the API. */
+internal const val API_PROBE_PREFIX = "CRUX_API_PROBE_"
