@@ -2,6 +2,7 @@ package casa.crux.app.ui.screens.deployments
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -270,18 +271,27 @@ private const val FOCUS_SETTLE_MS = 200L
 @Composable
 private fun RepoField(selected: String?, onOpen: () -> Unit) {
     val none = stringResource(R.string.deployments_field_repo_none)
-    OutlinedTextField(
-        value = selected ?: none,
-        onValueChange = {},
-        readOnly = true,
-        singleLine = true,
-        label = { Text(stringResource(R.string.deployments_field_repo)) },
-        trailingIcon = {
-            Icon(Icons.Default.Search, contentDescription = stringResource(R.string.deployments_field_repo_filter))
-        },
-        // readOnly swallows taps, so the whole field is made clickable instead.
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onOpen),
-    )
+    Box(modifier = Modifier.fillMaxWidth()) {
+        OutlinedTextField(
+            value = selected ?: none,
+            onValueChange = {},
+            readOnly = true,
+            singleLine = true,
+            label = { Text(stringResource(R.string.deployments_field_repo)) },
+            trailingIcon = {
+                Icon(Icons.Default.Search, contentDescription = stringResource(R.string.deployments_field_repo_filter))
+            },
+            modifier = Modifier.fillMaxWidth(),
+        )
+        // A text field handles its own pointer input to take focus, and wins over a clickable
+        // in the same chain — so `Modifier.clickable` on the field itself never fired and the
+        // search simply did not open. An overlay is on top in hit-test order, so it does.
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .clickable(onClick = onOpen),
+        )
+    }
 }
 
 /**
