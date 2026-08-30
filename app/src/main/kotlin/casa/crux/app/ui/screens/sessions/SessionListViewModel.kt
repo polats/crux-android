@@ -284,6 +284,7 @@ class SessionListViewModel @Inject constructor(
 
     init {
         loadHomeDir()
+        observeCheckout()
         loadSessions()
         viewModelScope.launch {
             while (true) {
@@ -425,6 +426,27 @@ class SessionListViewModel @Inject constructor(
         runCatching {
             serverRepository.getAllServers().first().firstOrNull { it.id == serverId }?.defaultDirectory
         }.getOrNull()
+
+    /**
+     * Kept in the state so the new-session picker can offer it. A freshly cloned repository has
+     * no sessions in it, so a picker built from sessions alone would never list the one
+     * directory the user actually asked for.
+     */
+    private val _checkoutDirectory = MutableStateFlow<String?>(null)
+
+    /**
+     * Its own flow rather than a field on the ui state, which is a thirteen-way combine read
+     * by index — a fragile thing to extend for one nullable string.
+     */
+    val checkoutDirectory: StateFlow<String?> = _checkoutDirectory.asStateFlow()
+
+    private fun observeCheckout() {
+        viewModelScope.launch {
+            serverRepository.getAllServers().collect { servers ->
+                _checkoutDirectory.value = servers.firstOrNull { it.id == serverId }?.defaultDirectory
+            }
+        }
+    }
 
     private fun loadHomeDir() {
         viewModelScope.launch {

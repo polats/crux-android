@@ -12,7 +12,7 @@ class WorkspaceCheckoutTest {
 
     @Test
     fun `an authenticated clone never writes the token into the command`() {
-        val command = cloneCommand("polats/secret", "/workspace/secret", authenticated = true)
+        val command = cloneCommand("polats/secret", "secret", authenticated = true)
         // The token is read into a shell variable with `read -rs`, which does not echo. Only
         // the variable's name appears here; the credential itself is sent separately.
         assertTrue(command.contains("\$CRUX_TOKEN"))
@@ -21,7 +21,7 @@ class WorkspaceCheckoutTest {
 
     @Test
     fun `the token is stripped from the remote after cloning`() {
-        val command = cloneCommand("polats/secret", "/workspace/secret", authenticated = true)
+        val command = cloneCommand("polats/secret", "secret", authenticated = true)
         // Left in place it would sit in .git/config, long-lived and with `repo` scope, inside a
         // container that runs arbitrary commands.
         assertTrue(
@@ -31,7 +31,7 @@ class WorkspaceCheckoutTest {
 
     @Test
     fun `a public clone carries no credential at all`() {
-        val command = cloneCommand("polats/open", "/workspace/open", authenticated = false)
+        val command = cloneCommand("polats/open", "open", authenticated = false)
         assertFalse(command.contains("CRUX_TOKEN"))
         assertFalse(command.contains("x-access-token"))
         assertTrue(command.contains("https://github.com/polats/open.git"))
@@ -39,21 +39,48 @@ class WorkspaceCheckoutTest {
 
     @Test
     fun `an existing checkout is left alone`() {
-        val command = cloneCommand("polats/open", "/workspace/open", authenticated = false)
+        val command = cloneCommand("polats/open", "open", authenticated = false)
         // Opening a space twice must not fail the second time, nor discard work done in the
         // first by re-cloning over it.
-        assertTrue(command.contains("if [ -d '/workspace/open/.git' ]"))
+        assertTrue(command.contains("if [ -d 'open/.git' ]"))
     }
 
     @Test
     fun `the outcome is reported with the clone's own exit code`() {
         // Not the exit code of the unset or the set-url that follow it, which would report
         // success for a clone that failed.
-        val command = cloneCommand("polats/secret", "/workspace/secret", authenticated = true)
+        val command = cloneCommand("polats/secret", "secret", authenticated = true)
         assertTrue(command.contains("rc=\$?"))
         assertTrue(command.trimEnd().endsWith("echo ${CLONE_MARKER_PREFIX}\$rc"))
         assertTrue(command.indexOf("rc=\$?") < command.indexOf("unset CRUX_TOKEN"))
         assertTrue(command.indexOf("rc=\$?") < command.indexOf("remote set-url"))
+    }
+
+    @Test
+    fun `the clone target is relative, never an absolute path built here`() {
+        // Deriving it from ServerPaths produced "/" once the trailing slash was stripped, so
+        // every clone targeted the filesystem root: "could not create work tree dir
+        // '/opencode-cloud': Permission denied". The terminal already starts in the right place.
+        val command = cloneCommand("polats/open", "open", authenticated = false)
+        assertFalse("no absolute path may be assumed", command.contains("'/"))
+        // And the shell says where it landed, rather than the caller assuming.
+        assertTrue(command.contains("echo ${CLONE_PATH_PREFIX}\$(cd 'open' && pwd)"))
+    }
+
+    @Test
+    fun `a dead partial clone is cleared, but never a directory with anything in it`() {
+        val command = cloneCommand("polats/open", "open", authenticated = false)
+        // rmdir, not rm -rf: it fails on a non-empty directory, so work already in the space
+        // cannot be destroyed by a retry.
+        assertTrue(command.contains("rmdir 'open'"))
+        assertFalse(command.contains("rm -"))
+    }
+
+    @Test
+    fun `only an absolute path is accepted as the clone location`() {
+        assertTrue(CLONE_PATH_MARKER.containsMatchIn("${CLONE_PATH_PREFIX}/workspaces/open"))
+        // The echoed command line itself carries the prefix without a path behind it.
+        assertFalse(CLONE_PATH_MARKER.containsMatchIn("echo ${CLONE_PATH_PREFIX}\$(cd 'open' && pwd)"))
     }
 
     @Test

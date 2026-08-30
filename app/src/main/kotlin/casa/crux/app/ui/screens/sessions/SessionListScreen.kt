@@ -103,9 +103,18 @@ internal data class RecentSessionDirectory(
     val lastUsed: Long,
 )
 
+/**
+ * Directories worth offering for a new session.
+ *
+ * [checkout] is the repository this server was created from. It leads, and it is offered even
+ * with no sessions in it yet — which is precisely the state it is in just after being cloned,
+ * and the only reason anyone chose a repository at all. Built from sessions alone, the one
+ * directory the user actually asked for was the one directory missing.
+ */
 internal fun recentSessionDirectories(
     sessions: List<SessionItem>,
     limit: Int = 20,
+    checkout: String? = null,
 ): List<RecentSessionDirectory> = sessions
     .groupBy { it.session.directory.trimEnd('/') }
     .map { (directory, items) ->
@@ -118,6 +127,18 @@ internal fun recentSessionDirectories(
     }
     .sortedByDescending(RecentSessionDirectory::lastUsed)
     .take(limit)
+    .let { recent ->
+        val path = checkout?.trim()?.trimEnd('/')?.takeIf { it.isNotBlank() } ?: return@let recent
+        val existing = recent.firstOrNull { it.directory.trimEnd('/') == path }
+        listOf(
+            existing ?: RecentSessionDirectory(
+                directory = path,
+                name = path.substringAfterLast('/').ifEmpty { path },
+                count = 0,
+                lastUsed = 0,
+            )
+        ) + recent.filter { it.directory.trimEnd('/') != path }
+    }
 
 /** Pulsing dots loading indicator — 3 dots that scale up/down in sequence. */
 @Composable
@@ -190,6 +211,7 @@ fun SessionListScreen(
     viewModel: SessionListViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val checkoutDirectory by viewModel.checkoutDirectory.collectAsState()
     val groupByProject by viewModel.groupSessionsByProject.collectAsState()
     val recentDirectoryCount by viewModel.recentDirectoryCount.collectAsState()
     val isAmoled = isAmoledTheme()
@@ -596,6 +618,7 @@ fun SessionListScreen(
         NewSessionQuickDialog(
             sessions = allSessions,
             limit = recentDirectoryCount,
+            checkout = checkoutDirectory,
             onSelectDirectory = { directory ->
                 showQuickNewSession = false
                 viewModel.createNewSession(directory = directory)
@@ -1298,12 +1321,13 @@ private fun DirectoryRow(
 private fun NewSessionQuickDialog(
     sessions: List<SessionItem>,
     limit: Int,
+    checkout: String?,
     onSelectDirectory: (String) -> Unit,
     onBrowse: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    val dirEntries = remember(sessions, limit) {
-        recentSessionDirectories(sessions, limit)
+    val dirEntries = remember(sessions, limit, checkout) {
+        recentSessionDirectories(sessions, limit, checkout)
     }
 
     Dialog(

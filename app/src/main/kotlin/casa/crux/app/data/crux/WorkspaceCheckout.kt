@@ -40,14 +40,9 @@ class WorkspaceCheckout @Inject constructor(
         onProgress: suspend (String) -> Unit = {},
     ): Result {
         val name = repo.substringAfterLast('/').ifBlank { return Result.Failed("Bad repository name") }
-        val root = runCatching { api.getServerPaths(conn) }.getOrNull()
-            ?.let { it.worktree.ifBlank { it.directory.ifBlank { it.home } } }
-            ?.trimEnd('/')
-            ?: return Result.Failed("Could not read the server's paths")
-        val path = "$root/$name"
 
         return try {
-            withTimeout(CLONE_TIMEOUT_MS) { clone(conn, repo, token, path, onProgress) }
+            withTimeout(CLONE_TIMEOUT_MS) { clone(conn, repo, token, name, onProgress) }
         } catch (e: TimeoutCancellationException) {
             Result.Failed("Timed out cloning $repo")
         } catch (e: Exception) {
@@ -56,16 +51,30 @@ class WorkspaceCheckout @Inject constructor(
         }
     }
 
+    /**
+     * @param name the directory to clone into, relative to wherever the terminal starts.
+     *
+     * Relative on purpose. This used to ask the server for a path and build an absolute one,
+     * and `ServerPaths.worktree` came back as "/" — which, once the trailing slash was
+     * stripped, made every clone target the filesystem root and fail with "could not create
+     * work tree dir '/repo': Permission denied". The terminal already opens in the directory
+     * opencode runs in, which is the place we wanted all along, so it is not worth deriving.
+     */
     private suspend fun clone(
         conn: ServerConnection,
         repo: String,
         token: String?,
-        path: String,
+        name: String,
         onProgress: suspend (String) -> Unit,
     ): Result {
-        val pty = api.createPty(conn, title = "crux-setup", cwd = path.substringBeforeLast('/'))
+        val pty = api.createPty(conn, title = "crux-setup")
+        Log.i(TAG, "Cloning $repo through pty ${pty.id}")
         val socket = api.openPtySocket(conn, pty.id)
         var outcome: Int? = null
+        var resolved: String? = null
+        // git's own words. Without them a failure is just an exit code, and 128 covers
+        // everything from a missing repository to a directory already in the way.
+        val transcript = ArrayDeque<String>()
         try {
             // Read the token into a shell variable rather than writing it into the command:
             // `read -rs` does not echo, so the credential never appears in the terminal's
@@ -74,13 +83,25 @@ class WorkspaceCheckout @Inject constructor(
                 socket.send("read -rs CRUX_TOKEN\n")
                 socket.send("$token\n")
             }
-            socket.send(cloneCommand(repo, path, authenticated = token != null) + "\n")
+            socket.send(cloneCommand(repo, name, authenticated = token != null) + "\n")
 
             socket.readLoop { text ->
                 text.lineSequence().forEach { line ->
                     CLONE_MARKER.find(line)?.let { outcome = it.groupValues[1].toIntOrNull() }
-                    line.trim().takeIf { it.isNotEmpty() && !it.startsWith(CLONE_MARKER_PREFIX) }
-                        ?.let { onProgress(it) }
+                    CLONE_PATH_MARKER.find(line)
+                        ?.let { it.groupValues[1].trim() }
+                        ?.takeIf { it.startsWith("/") }
+                        ?.let { resolved = it }
+                    line.trim().takeIf {
+                        it.isNotEmpty() &&
+                            !it.startsWith(CLONE_MARKER_PREFIX) &&
+                            !it.startsWith(CLONE_PATH_PREFIX)
+                    }
+                        ?.let {
+                            onProgress(it)
+                            transcript.addLast(it)
+                            if (transcript.size > TRANSCRIPT_LINES) transcript.removeFirst()
+                        }
                 }
                 if (outcome != null) socket.close()
             }
@@ -89,16 +110,23 @@ class WorkspaceCheckout @Inject constructor(
             runCatching { api.removePty(conn, pty.id) }
         }
 
+        // The last line git printed says more than the code: "already exists and is not an
+        // empty directory" and "repository not found" are both exit 128.
+        val reason = transcript.lastOrNull { it.contains("fatal", ignoreCase = true) }
+            ?: transcript.lastOrNull()
         return when (outcome) {
-            0 -> Result.Ready(path)
-            null -> Result.Failed("The clone did not report a result")
-            else -> Result.Failed("git clone exited with $outcome")
+            // The absolute path comes back from the shell rather than being assumed here.
+            0 -> resolved?.let { Result.Ready(it) }
+                ?: Result.Failed("The clone finished but did not say where")
+            null -> Result.Failed("The clone did not report a result. ${reason.orEmpty()}".trim())
+            else -> Result.Failed(reason ?: "git clone exited with $outcome")
         }
     }
 
     internal companion object {
         const val TAG = "WorkspaceCheckout"
         const val CLONE_TIMEOUT_MS = 180_000L
+        const val TRANSCRIPT_LINES = 12
     }
 }
 
@@ -115,10 +143,17 @@ internal fun cloneCommand(repo: String, path: String, authenticated: Boolean): S
     val source = if (authenticated) "https://x-access-token:\$CRUX_TOKEN@github.com/$repo.git" else origin
     return buildString {
         append("if [ -d '$path/.git' ]; then rc=0; ")
-        append("else git clone --depth 1 '$source' '$path'; rc=\$?; fi; ")
+        // A clone that died partway leaves a directory behind, and git refuses to clone into
+        // one that already exists — so every retry failed with 128 where the first attempt had
+        // failed with something else. Only ever removed when it holds no repository and
+        // nothing else, so work already in the space is never destroyed.
+        append("else rmdir '$path' 2>/dev/null; ")
+        append("git clone --depth 1 '$source' '$path'; rc=\$?; fi; ")
         // Only when there was one: a public clone should mention no credential at all.
         if (authenticated) append("unset CRUX_TOKEN; ")
-        append("if [ \$rc -eq 0 ]; then git -C '$path' remote set-url origin '$origin' 2>/dev/null; fi; ")
+        append("if [ \$rc -eq 0 ]; then git -C '$path' remote set-url origin '$origin' 2>/dev/null; ")
+        // Where it actually landed, said by the shell rather than assumed by the caller.
+        append("echo $CLONE_PATH_PREFIX\$(cd '$path' && pwd); fi; ")
         append("echo $CLONE_MARKER_PREFIX\$rc")
     }
 }
@@ -126,3 +161,7 @@ internal fun cloneCommand(repo: String, path: String, authenticated: Boolean): S
 /** How the shell reports the clone's own exit code back through the terminal. */
 internal const val CLONE_MARKER_PREFIX = "CRUX_CLONE_DONE_"
 internal val CLONE_MARKER = Regex("$CLONE_MARKER_PREFIX(\\d+)")
+
+/** How the shell reports the absolute path it cloned into. */
+internal const val CLONE_PATH_PREFIX = "CRUX_CLONE_PATH_"
+internal val CLONE_PATH_MARKER = Regex("$CLONE_PATH_PREFIX(/\\S*)")

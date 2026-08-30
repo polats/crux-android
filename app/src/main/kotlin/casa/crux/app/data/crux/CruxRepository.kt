@@ -244,7 +244,10 @@ class CruxRepository @Inject constructor(
             onProgress(repo)
             val conn = ServerConnection.from(url, connection.username, connection.password)
             when (val outcome = checkout.ensure(conn, repo, connection.githubToken, onProgress)) {
-                is WorkspaceCheckout.Result.Ready -> outcome.path
+                is WorkspaceCheckout.Result.Ready -> {
+                    Log.i(TAG, "Checked out $repo at ${outcome.path}")
+                    outcome.path
+                }
                 // Not fatal. The space is running and worth having; the checkout can be retried
                 // by connecting again, and failing the whole connect would strand it.
                 is WorkspaceCheckout.Result.Failed -> {
