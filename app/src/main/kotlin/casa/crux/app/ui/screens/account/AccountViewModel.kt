@@ -180,27 +180,31 @@ internal fun outcomeNotice(outcome: String?): String? = when (outcome) {
  * One row per provider the server offers, in a fixed order so the list never reshuffles.
  *
  * A disconnect is refused for two reasons, and both are decided here rather than discovered
- * by tapping: the last remaining account cannot go, because that would leave you unable to
- * sign in at all; and one still holding spaces cannot go, because unlinking deletes the
- * credential Crux needs to manage or even delete them.
+ * by tapping: GitHub cannot go, because it is how you sign in; and one still holding spaces
+ * cannot go, because unlinking deletes the credential Crux needs to manage or even delete
+ * them.
  */
 internal fun accountRows(
     account: CruxAccount?,
     spacesByProvider: Map<String, Int> = emptyMap(),
+    signedIn: Boolean = account?.identities.orEmpty().isNotEmpty(),
 ): List<AccountRow> {
     val offered = configuredProviders(account).ifEmpty { LOGIN_PROVIDERS }
     val linked = account?.identities.orEmpty().associateBy { it.provider }
-    return offered.map { provider ->
+    // Signed out there is only one way in. Offering the other two would be offering a sign-in
+    // the server refuses, since they can be connected to an account but cannot create one.
+    val visible = if (signedIn) offered else offered.filter { it == MAIN_PROVIDER }
+    return visible.map { provider ->
         val identity = linked[provider]
         AccountRow(
             provider = provider,
             connected = identity != null,
             username = identity?.username,
-            // The last one left has no useful action: disconnecting it would leave you unable
-            // to sign in, and sign-out already sits at the bottom of the screen.
-            canDisconnect = identity != null && linked.size > 1,
+            // GitHub has no useful disconnect: it is the way in, so removing it would leave
+            // you unable to sign in at all. Sign-out sits at the bottom of the screen for that.
+            canDisconnect = identity != null && provider != MAIN_PROVIDER,
             blockedReason = when {
-                identity == null || linked.size <= 1 -> null
+                identity == null || provider == MAIN_PROVIDER -> null
                 (spacesByProvider[provider] ?: 0) > 0 -> R.string.deployments_account_blocked_spaces
                 else -> null
             },
@@ -213,3 +217,9 @@ internal fun configuredProviders(account: CruxAccount?): List<String> =
     LOGIN_PROVIDERS.filter { account?.providers?.get(it) == true }
 
 internal val LOGIN_PROVIDERS = listOf("huggingface", "railway", "github")
+
+/**
+ * The only provider that can create a Crux account, mirroring SIGNUP_PROVIDERS on crux.casa.
+ * The other two are connected to an account that already exists.
+ */
+internal const val MAIN_PROVIDER = "github"

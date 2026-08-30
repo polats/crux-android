@@ -36,8 +36,8 @@ class AccountRowsTest {
 
     @Test
     fun `an unconfigured provider is not offered at all`() {
-        val rows = accountRows(account("huggingface", configured = listOf("huggingface", "railway")))
-        assertEquals(listOf("huggingface", "railway"), rows.map { it.provider })
+        val rows = accountRows(account("github", "huggingface", configured = listOf("github", "huggingface")))
+        assertEquals(listOf("huggingface", "github"), rows.map { it.provider })
     }
 
     @Test
@@ -57,19 +57,23 @@ class AccountRowsTest {
     }
 
     @Test
-    fun `the only remaining account offers no disconnect at all`() {
+    fun `github never offers a disconnect, because it is the way in`() {
         // Not disabled-with-a-reason: there is nothing useful to offer, so nothing is shown.
-        val hf = accountRows(account("huggingface")).first { it.provider == "huggingface" }
-        assertFalse(hf.canDisconnect)
-        assertNull(hf.blockedReason)
+        // Removing it would leave the account with no way to sign in; sign-out covers that.
+        val onlyGithub = accountRows(account("github")).first { it.provider == "github" }
+        assertFalse(onlyGithub.canDisconnect)
+        assertNull(onlyGithub.blockedReason)
+
+        val alsoGithub = accountRows(account("github", "huggingface")).first { it.provider == "github" }
+        assertFalse(alsoGithub.canDisconnect)
+        assertNull(alsoGithub.blockedReason)
     }
 
     @Test
-    fun `with two linked, either can be disconnected`() {
+    fun `a connected side provider can be disconnected`() {
         val rows = accountRows(account("huggingface", "github"))
         assertTrue(rows.first { it.provider == "huggingface" }.canDisconnect)
         assertNull(rows.first { it.provider == "huggingface" }.blockedReason)
-        assertTrue(rows.first { it.provider == "github" }.canDisconnect)
     }
 
     @Test
@@ -97,25 +101,32 @@ class AccountRowsTest {
     }
 
     @Test
-    fun `the last account shows nothing even when it owns spaces`() {
-        val hf = accountRows(account("huggingface"), spacesByProvider = mapOf("huggingface" to 3))
-            .first { it.provider == "huggingface" }
-        assertFalse(hf.canDisconnect)
-        assertNull(hf.blockedReason)
+    fun `github owning spaces still shows nothing, since it cannot be disconnected anyway`() {
+        val gh = accountRows(account("github"), spacesByProvider = mapOf("github" to 3))
+            .first { it.provider == "github" }
+        assertFalse(gh.canDisconnect)
+        assertNull(gh.blockedReason)
     }
 
     @Test
-    fun `signed out still offers every configured provider`() {
+    fun `signed out offers github alone`() {
+        // The other two can be connected to an account but cannot create one, so offering them
+        // here would be offering a sign-in the server refuses.
         val rows = accountRows(CruxAccount(providers = ALL.associateWith { true }))
-        assertEquals(3, rows.size)
+        assertEquals(listOf("github"), rows.map { it.provider })
         assertTrue(rows.none { it.connected })
-        assertTrue(rows.none { it.blockedReason != null })
         assertTrue(rows.none { it.canDisconnect })
     }
 
     @Test
-    fun `with no account at all, fall back to all three rather than showing nothing`() {
-        val rows = accountRows(null)
-        assertEquals(ALL, rows.map { it.provider })
+    fun `with no account at all, github is still the way in`() {
+        assertEquals(listOf("github"), accountRows(null).map { it.provider })
+    }
+
+    @Test
+    fun `signing in reveals the other two as connectable`() {
+        val rows = accountRows(account("github"))
+        assertEquals(ALL.sorted(), rows.map { it.provider }.sorted())
+        assertTrue(rows.first { it.provider == "huggingface" }.let { !it.connected && !it.canDisconnect })
     }
 }

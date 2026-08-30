@@ -102,7 +102,7 @@ fun AccountScreen(
                 .padding(horizontal = 20.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            val rows = accountRows(state.account, state.spacesByProvider)
+            val rows = accountRows(state.account, state.spacesByProvider, state.signedIn == true)
             rows.forEachIndexed { index, row ->
                 // Connected accounts sort first; a rule between the groups makes the split
                 // obvious without a heading for each.
