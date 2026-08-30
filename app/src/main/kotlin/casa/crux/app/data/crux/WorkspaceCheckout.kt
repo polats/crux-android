@@ -68,7 +68,7 @@ class WorkspaceCheckout @Inject constructor(
         onProgress: suspend (String) -> Unit,
     ): Result {
         val pty = api.createPty(conn, title = "crux-setup")
-        Log.i(TAG, "Cloning $repo through pty ${pty.id}")
+        Log.i(TAG, "Cloning $repo through pty ${pty.id} (credential: ${if (token.isNullOrBlank()) "none" else "present"})")
         val socket = api.openPtySocket(conn, pty.id)
         var outcome: Int? = null
         var resolved: String? = null
@@ -95,7 +95,8 @@ class WorkspaceCheckout @Inject constructor(
                     plainText(line).takeIf {
                         it.isNotEmpty() &&
                             !it.startsWith(CLONE_MARKER_PREFIX) &&
-                            !it.startsWith(CLONE_PATH_PREFIX)
+                            !it.startsWith(CLONE_PATH_PREFIX) &&
+                            !it.startsWith(CRED_LEN_PREFIX)
                     }
                         ?.let {
                             onProgress(it)
@@ -112,6 +113,8 @@ class WorkspaceCheckout @Inject constructor(
 
         // The last line git printed says more than the code: "already exists and is not an
         // empty directory" and "repository not found" are both exit 128.
+        transcript.firstOrNull { it.startsWith(CRED_LEN_PREFIX) }
+            ?.let { Log.i(TAG, "credential reached the shell: $it") }
         val reason = transcript.lastOrNull { it.contains("fatal", ignoreCase = true) }
             ?: transcript.lastOrNull()
         return when (outcome) {
@@ -142,6 +145,9 @@ internal fun cloneCommand(repo: String, path: String, authenticated: Boolean): S
     val origin = "https://github.com/$repo.git"
     val source = if (authenticated) "https://x-access-token:\$CRUX_TOKEN@github.com/$repo.git" else origin
     return buildString {
+        // The length only, never the value: enough to tell "the shell never received the
+        // credential" from "the credential was refused", which look identical from outside.
+        if (authenticated) append("echo $CRED_LEN_PREFIX\${#CRUX_TOKEN}; ")
         append("if [ -d '$path/.git' ]; then rc=0; ")
         // A clone that died partway leaves a directory behind, and git refuses to clone into
         // one that already exists — so every retry failed with 128 where the first attempt had
@@ -180,3 +186,6 @@ internal fun plainText(line: String): String = line
 
 private val ANSI_ESCAPE = Regex("\u001B(?:\\[[0-?]*[ -/]*[@-~]|\\][^\u0007]*\u0007|[@-Z\\\\-_])")
 private val CONTROL_CHARS = Regex("[\u0000-\u0008\u000B-\u001F\u007F]")
+
+/** Reports the credential's length, never its value, so a lost token is told from a refused one. */
+internal const val CRED_LEN_PREFIX = "CRUX_CRED_LEN_"
