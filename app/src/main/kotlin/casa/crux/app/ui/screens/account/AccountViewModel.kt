@@ -255,14 +255,21 @@ internal fun accountRows(
                 else -> null
             },
         )
-    }.sortedByDescending { it.connected }
+    }
 }
 
 /** Providers the server has configured, in a stable order. */
 internal fun configuredProviders(account: CruxAccount?): List<String> =
     LOGIN_PROVIDERS.filter { account?.providers?.get(it) == true }
 
-internal val LOGIN_PROVIDERS = listOf("huggingface", "railway", "github")
+/**
+ * Display order, GitHub first because it is the way in.
+ *
+ * Fixed, and deliberately not sorted by whether an account is connected: rows that rearrange
+ * as you connect and disconnect make you re-find the one you were looking at, and the list is
+ * three items long — there is nothing to gain by grouping it.
+ */
+internal val LOGIN_PROVIDERS = listOf("github", "huggingface", "railway")
 
 /**
  * The only provider that can create a Crux account, mirroring SIGNUP_PROVIDERS on crux.casa.

@@ -33,6 +33,7 @@ import casa.crux.app.data.crux.CruxTemplate
 import casa.crux.app.data.crux.CruxWorkspace
 import casa.crux.app.ui.components.AppDialog
 import casa.crux.app.ui.components.AppDialogActions
+import casa.crux.app.ui.screens.account.LOGIN_PROVIDERS
 import casa.crux.app.ui.screens.account.providerLabel
 import kotlin.random.Random
 
@@ -85,8 +86,13 @@ fun CreateDeploymentDialog(
                 // Every provider, always — the dropdown is where you learn that Railway and
                 // Hugging Face exist at all. Unconnected ones are listed but cannot be chosen;
                 // picking one offers to connect it instead of silently doing nothing.
-                val choices = state.availableProviders.ifEmpty { DEPLOY_PROVIDERS.toList() }
-                    .filter { it in DEPLOY_PROVIDERS }
+                // The same fixed order as the Accounts screen, GitHub first — not the order
+                // DEPLOY_PROVIDERS happens to be declared in, and not grouped by what is
+                // connected. A list that rearranges under you is one you have to re-read.
+                val choices = LOGIN_PROVIDERS.filter { candidate ->
+                    candidate in DEPLOY_PROVIDERS &&
+                        (state.availableProviders.isEmpty() || candidate in state.availableProviders)
+                }
                 val connectedBy = state.account?.identities.orEmpty().associateBy { it.provider }
                 Picker(
                     label = stringResource(R.string.deployments_field_create_in),

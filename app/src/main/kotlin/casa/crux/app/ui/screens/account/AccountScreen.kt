@@ -111,12 +111,7 @@ fun AccountScreen(
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             val rows = accountRows(state.account, state.spacesByProvider, state.signedIn == true)
-            rows.forEachIndexed { index, row ->
-                // Connected accounts sort first; a rule between the groups makes the split
-                // obvious without a heading for each.
-                if (index > 0 && rows[index - 1].connected && !row.connected) {
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                }
+            rows.forEach { row ->
                 ProviderRow(
                     row = row,
                     busy = state.busyProvider == row.provider,

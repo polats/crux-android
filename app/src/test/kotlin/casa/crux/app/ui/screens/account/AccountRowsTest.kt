@@ -21,12 +21,15 @@ class AccountRowsTest {
     }
 
     @Test
-    fun `connected accounts sort to the top`() {
-        val rows = accountRows(account("github"))
-        assertEquals("github", rows.first().provider)
-        assertTrue(rows.first().connected)
-        // The unconnected keep their stable order behind it.
-        assertEquals(listOf("huggingface", "railway"), rows.drop(1).map { it.provider })
+    fun `the order is fixed, whatever is connected`() {
+        // GitHub first because it is the way in, and nothing moves as accounts come and go:
+        // a list that rearranges under you is one you have to re-read to use.
+        val expected = listOf("github", "huggingface", "railway")
+        assertEquals(expected, accountRows(account("github")).map { it.provider })
+        assertEquals(expected, accountRows(account("railway", "github")).map { it.provider })
+        assertEquals(expected, accountRows(account("huggingface", "railway", "github")).map { it.provider })
+        // Connecting one must not move the others.
+        assertEquals(expected, accountRows(account("github")).map { it.provider })
     }
 
     @Test
@@ -37,7 +40,7 @@ class AccountRowsTest {
     @Test
     fun `an unconfigured provider is not offered at all`() {
         val rows = accountRows(account("github", "huggingface", configured = listOf("github", "huggingface")))
-        assertEquals(listOf("huggingface", "github"), rows.map { it.provider })
+        assertEquals(listOf("github", "huggingface"), rows.map { it.provider })
     }
 
     @Test
