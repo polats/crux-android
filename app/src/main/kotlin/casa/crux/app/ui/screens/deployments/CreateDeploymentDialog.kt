@@ -31,11 +31,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -302,11 +304,20 @@ private fun RepoSearchDialog(
 ) {
     var query by remember { mutableStateOf("") }
     val focus = remember { FocusRequester() }
+    val keyboard = LocalSoftwareKeyboardController.current
     val matches = remember(repositories, query) {
         val term = query.trim()
         if (term.isEmpty()) repositories else repositories.filter { it.repo.contains(term, ignoreCase = true) }
     }
-    LaunchedEffect(Unit) { focus.requestFocus() }
+    LaunchedEffect(Unit) {
+        // Two things, and neither alone is enough. The dialog gets its own window, which does
+        // not exist yet in the frame that composes it — requesting focus there silently does
+        // nothing — so this waits for a frame first. And taking focus does not by itself raise
+        // the keyboard, which is why the field was focused but nothing came up.
+        withFrameNanos { }
+        focus.requestFocus()
+        keyboard?.show()
+    }
 
     AppDialog(onDismissRequest = onDismiss) {
         Column(
