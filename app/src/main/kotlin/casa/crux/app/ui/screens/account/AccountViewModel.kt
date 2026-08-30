@@ -105,8 +105,18 @@ class AccountViewModel @Inject constructor(
      * Signs in when nothing is linked yet, and links onto the existing account after that.
      * The distinction is the server's to enforce, so the button does not have to explain it.
      */
+    /**
+     * Connect a provider, linking it when there is an account to link it to.
+     *
+     * The token is read here rather than the UI's copy of it. `signedIn` is a Boolean? that
+     * starts null while the AndroidKeyStore is unlocked on a background thread, and
+     * `null == true` is false — so pressing Connect early sent a *sign-in*, which created a
+     * second account holding that provider instead of attaching it to this one. The account
+     * then captured every later attempt, because signing in with an identity somebody already
+     * owns switches to its owner rather than merging.
+     */
     fun connect(provider: String) =
-        start(provider, if (uiState.value.signedIn == true) CruxIntent.LINK else CruxIntent.SIGN_IN)
+        start(provider, if (repository.isSignedIn()) CruxIntent.LINK else CruxIntent.SIGN_IN)
 
     fun disconnect(provider: String) {
         viewModelScope.launch {
