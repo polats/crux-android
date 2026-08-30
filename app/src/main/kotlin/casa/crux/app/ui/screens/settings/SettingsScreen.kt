@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.CloudSync
+import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.ColorLens
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Delete
@@ -90,6 +91,7 @@ fun SettingsScreen(
     onNavigateToDiagnostics: () -> Unit = {},
     onNavigateToSync: () -> Unit = {},
     onNavigateToAbout: () -> Unit = {},
+    onNavigateToLocalServers: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val currentLanguage by viewModel.appLanguage.collectAsState()
@@ -186,6 +188,15 @@ fun SettingsScreen(
                     Icon(Icons.Default.Language, contentDescription = null)
                 },
                 modifier = Modifier.clickable { showLanguageDialog = true }
+            )
+
+            // Servers added by hand, which used to be the app's front page. Spaces covers the
+            // ordinary case now, so this is for an opencode the user runs themselves.
+            ListItem(
+                headlineContent = { Text(stringResource(R.string.settings_local_servers)) },
+                supportingContent = { Text(stringResource(R.string.settings_local_servers_desc)) },
+                leadingContent = { Icon(Icons.Default.Dns, contentDescription = null) },
+                modifier = Modifier.clickable { onNavigateToLocalServers() },
             )
 
             ListItem(

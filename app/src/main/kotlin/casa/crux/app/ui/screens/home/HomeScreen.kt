@@ -132,6 +132,11 @@ fun HomeScreen(
     onNavigateToSettings: () -> Unit = {},
     onNavigateToDeployments: () -> Unit = {},
     onNavigateToAccount: () -> Unit = {},
+    /**
+     * Shows a back arrow when this screen is reached from somewhere. Null when it is the
+     * root, which is how upstream uses it and remains the default here.
+     */
+    onNavigateBack: (() -> Unit)? = null,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -223,6 +228,13 @@ fun HomeScreen(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.home_title)) },
+                navigationIcon = {
+                    onNavigateBack?.let { back ->
+                        IconButton(onClick = back) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.back))
+                        }
+                    }
+                },
                 actions = {
                     // Dimmed without an account, and routed to sign-in rather than opening a
                     // Spaces screen that could only tell you to go and sign in.

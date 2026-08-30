@@ -387,7 +387,10 @@ fun NavGraph(
     
     NavHost(
         navController = navController,
-        startDestination = Screen.Home.route
+        // Spaces, not the hand-added server list: a space is how servers come into being now,
+        // and connecting one opens it directly. Home is still registered below and reachable
+        // from Settings, for a server the user runs themselves.
+        startDestination = Screen.Deployments.route
     ) {
         // ============ Home Screen ============
         composable(Screen.Home.route) {
@@ -414,7 +417,8 @@ fun NavGraph(
                 },
                 onNavigateToAccount = {
                     navController.navigate(Screen.Account.route)
-                }
+                },
+                onNavigateBack = { navController.popBackStack() },
             )
         }
 
@@ -455,6 +459,7 @@ fun NavGraph(
                 },
                 onNavigateToDiagnostics = { navController.navigate(Screen.Diagnostics.route) },
                 onNavigateToSync = { navController.navigate(Screen.SyncSettings.route) },
+                onNavigateToLocalServers = { navController.navigate(Screen.Home.route) },
             )
         }
 
@@ -567,12 +572,20 @@ fun NavGraph(
         // ============ About Screen ============
         composable(Screen.Deployments.route) {
             DeploymentsScreen(
-                onNavigateBack = { navController.popBackStack() },
                 onNavigateToAccount = { navController.navigate(Screen.Account.route) },
-                onServerConnected = {
-                    // A connected deployment is an ordinary server from here on, so drop
-                    // back to the list that already knows how to open one.
-                    navController.popBackStack(Screen.Home.route, inclusive = false)
+                onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
+                onServerConnected = { server ->
+                    // Straight into the space. Connecting used to land on the server list,
+                    // leaving the user to find and tap the thing they had just connected.
+                    navController.navigate(
+                        Screen.SessionList.createRoute(
+                            server.url,
+                            server.username,
+                            server.password.orEmpty(),
+                            server.displayName,
+                            server.id,
+                        )
+                    )
                 },
             )
         }

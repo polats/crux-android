@@ -681,6 +681,8 @@ Tokens: ~%4$d -&gt; ~%5$d</string>
     <string name="about_check_updates_desc">Check GitHub for a newer release</string>
 
     <!-- Settings sync -->
+    <string name="settings_local_servers">Local servers</string>
+    <string name="settings_local_servers_desc">Servers you add by hand, for an opencode you run yourself</string>
     <string name="sync_title">Settings sync</string>
     <string name="sync_settings_desc">Sync settings and servers through Gist or WebDAV</string>
     <string name="sync_settings_desc_v2">Sync settings and servers through Gist, WebDAV, or a system file provider</string>

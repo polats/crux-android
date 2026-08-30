@@ -5,12 +5,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import casa.crux.app.data.crux.CruxAccount
 import casa.crux.app.data.crux.CruxCreateRequest
+import casa.crux.app.domain.model.ServerConfig
 import casa.crux.app.data.crux.CruxDeployment
 import casa.crux.app.data.crux.CruxDeploymentStatus
 import casa.crux.app.data.crux.CruxIdentity
 import casa.crux.app.data.crux.CruxIntent
 import casa.crux.app.ui.screens.account.configuredProviders
 import casa.crux.app.data.crux.CruxRepository
+import casa.crux.app.data.update.UpdateRepository
 import casa.crux.app.data.crux.CruxTemplate
 import casa.crux.app.data.crux.CruxUnauthorizedException
 import casa.crux.app.data.crux.CruxWorkspace
@@ -48,6 +50,7 @@ data class DeploymentsUiState(
 @HiltViewModel
 class DeploymentsViewModel @Inject constructor(
     private val repository: CruxRepository,
+    private val updateRepository: UpdateRepository,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(DeploymentsUiState())
     val uiState: StateFlow<DeploymentsUiState> = _uiState.asStateFlow()
@@ -56,13 +59,25 @@ class DeploymentsViewModel @Inject constructor(
     private val _authorizationUrls = MutableSharedFlow<String>()
     val authorizationUrls: SharedFlow<String> = _authorizationUrls.asSharedFlow()
 
-    /** Emitted once a deployment has become a server, so the screen can navigate to it. */
-    private val _connected = MutableSharedFlow<String>()
-    val connected: SharedFlow<String> = _connected.asSharedFlow()
+    /**
+     * Emitted once a deployment has become a server, so the screen can open it.
+     *
+     * Carries the whole [ServerConfig] rather than its id because the session route is built
+     * from the url, credentials and name — connecting used to drop the user on the server list
+     * to find and tap the thing they had just connected.
+     */
+    private val _connected = MutableSharedFlow<ServerConfig>()
+    val connected: SharedFlow<ServerConfig> = _connected.asSharedFlow()
 
     private var pollJob: Job? = null
 
     init {
+        // The launch-time update check used to ride on HomeViewModel, which is no longer the
+        // first screen. Without this the app would quietly stop noticing its own updates.
+        viewModelScope.launch {
+            updateRepository.restore()
+            updateRepository.check(manual = false)
+        }
         // The shared signed-in flow drives this, so signing in or out anywhere is reflected
         // here without the screen polling on entry.
         viewModelScope.launch {
@@ -172,7 +187,7 @@ class DeploymentsViewModel @Inject constructor(
             try {
                 val server = repository.connect(deployment)
                 _uiState.update { it.copy(busyId = null) }
-                _connected.emit(server.id)
+                _connected.emit(server)
             } catch (e: CruxUnauthorizedException) {
                 signedOut(e)
             } catch (e: Exception) {

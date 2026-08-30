@@ -17,7 +17,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material3.CardDefaults
@@ -48,6 +48,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.runtime.DisposableEffect
 import casa.crux.app.R
 import casa.crux.app.data.crux.CruxDeployment
+import casa.crux.app.domain.model.ServerConfig
 import casa.crux.app.ui.components.AppCardShape
 import casa.crux.app.ui.components.AppDialog
 import casa.crux.app.ui.components.AppPrimaryButton
@@ -65,9 +66,9 @@ import kotlinx.coroutines.flow.SharedFlow
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DeploymentsScreen(
-    onNavigateBack: () -> Unit,
-    onServerConnected: (String) -> Unit,
+    onServerConnected: (ServerConfig) -> Unit,
     onNavigateToAccount: () -> Unit = {},
+    onNavigateToSettings: () -> Unit = {},
     viewModel: DeploymentsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -95,16 +96,22 @@ fun DeploymentsScreen(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.deployments_title)) },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.back))
-                    }
-                },
+                // No back arrow: this is the app's first screen now, so there is nothing
+                // beneath it to go back to.
                 actions = {
                     if (state.signedIn) {
                         IconButton(onClick = { viewModel.showCreateDialog(true) }) {
                             Icon(Icons.Default.Add, contentDescription = stringResource(R.string.deployments_create))
                         }
+                    }
+                    IconButton(onClick = onNavigateToAccount) {
+                        Icon(
+                            Icons.Default.AccountCircle,
+                            contentDescription = stringResource(R.string.deployments_account_title),
+                        )
+                    }
+                    IconButton(onClick = onNavigateToSettings) {
+                        Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.settings_title))
                     }
                 },
             )
