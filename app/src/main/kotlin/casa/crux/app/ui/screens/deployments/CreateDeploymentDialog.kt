@@ -4,31 +4,34 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material3.Icon
-import androidx.compose.material3.TextButton
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import casa.crux.app.R
 import casa.crux.app.data.crux.CruxCreateRequest
+import casa.crux.app.data.crux.CruxRepo
 import casa.crux.app.data.crux.CruxTemplate
 import casa.crux.app.data.crux.CruxWorkspace
 import casa.crux.app.ui.components.AppDialog
@@ -158,14 +161,10 @@ fun CreateDeploymentDialog(
                 if (state.repositories.isNotEmpty()) {
                     // Beside the name rather than under Advanced: what a space starts with is
                     // the decision worth making here, and an empty one is only the default.
-                    val none = stringResource(R.string.deployments_field_repo_none)
-                    Picker(
-                        label = stringResource(R.string.deployments_field_repo),
-                        selected = workspaceRepo ?: none,
-                        options = listOf(none) + state.repositories.map { it.repo },
-                        onSelect = { index ->
-                            workspaceRepo = state.repositories.getOrNull(index - 1)?.repo
-                        },
+                    RepoPicker(
+                        repositories = state.repositories,
+                        selected = workspaceRepo,
+                        onSelect = { workspaceRepo = it },
                     )
                 }
 
@@ -240,6 +239,81 @@ fun CreateDeploymentDialog(
                 },
                 confirmEnabled = canCreate,
             )
+        }
+    }
+}
+
+/**
+ * The repository to start from, with a filter.
+ *
+ * A plain dropdown was fine for three templates and unusable for a hundred repositories, which
+ * is what `GET /user/repos` returns. Typing filters; the field doubles as the search box, so
+ * there is nothing extra on screen when the list is short.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun RepoPicker(
+    repositories: List<CruxRepo>,
+    selected: String?,
+    onSelect: (String?) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    var query by remember { mutableStateOf("") }
+    val none = stringResource(R.string.deployments_field_repo_none)
+
+    // While closed the field shows the choice; while open it shows what is being typed, so the
+    // selection is not destroyed by browsing away from it and changing nothing.
+    val text = if (expanded) query else selected ?: none
+    val matches = remember(repositories, query, expanded) {
+        if (!expanded || query.isBlank()) repositories
+        else repositories.filter { it.repo.contains(query.trim(), ignoreCase = true) }
+    }
+
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { open ->
+            expanded = open
+            // Opening starts from empty rather than from the current selection, which would
+            // otherwise filter the list down to the one thing already chosen.
+            if (open) query = ""
+        },
+    ) {
+        OutlinedTextField(
+            value = text,
+            onValueChange = { query = it; expanded = true },
+            label = { Text(stringResource(R.string.deployments_field_repo)) },
+            singleLine = true,
+            placeholder = { Text(stringResource(R.string.deployments_field_repo_filter)) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            modifier = Modifier.fillMaxWidth().menuAnchor(),
+        )
+        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DropdownMenuItem(
+                text = { Text(none) },
+                onClick = { onSelect(null); expanded = false },
+            )
+            matches.forEach { repository ->
+                DropdownMenuItem(
+                    text = { Text(repository.repo) },
+                    trailingIcon = {
+                        if (repository.isPrivate) {
+                            Icon(
+                                Icons.Default.Lock,
+                                contentDescription = stringResource(R.string.deployments_repo_private),
+                                modifier = Modifier.size(14.dp),
+                            )
+                        }
+                    },
+                    onClick = { onSelect(repository.repo); expanded = false },
+                )
+            }
+            if (matches.isEmpty()) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.deployments_field_repo_no_match)) },
+                    enabled = false,
+                    onClick = {},
+                )
+            }
         }
     }
 }
