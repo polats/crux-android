@@ -1,22 +1,28 @@
 package casa.crux.app.ui.screens.deployments
 
+import android.content.Context
+import android.content.Intent
+import android.os.Build
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import casa.crux.app.data.crux.CruxAccount
 import casa.crux.app.data.crux.CruxCreateRequest
-import casa.crux.app.domain.model.ServerConfig
 import casa.crux.app.data.crux.CruxDeployment
 import casa.crux.app.data.crux.CruxDeploymentStatus
 import casa.crux.app.data.crux.CruxIdentity
 import casa.crux.app.data.crux.CruxIntent
-import casa.crux.app.ui.screens.account.configuredProviders
 import casa.crux.app.data.crux.CruxRepository
-import casa.crux.app.data.update.UpdateRepository
 import casa.crux.app.data.crux.CruxTemplate
 import casa.crux.app.data.crux.CruxUnauthorizedException
 import casa.crux.app.data.crux.CruxWorkspace
+import casa.crux.app.data.update.UpdateRepository
+import casa.crux.app.domain.model.ServerConfig
+import casa.crux.app.service.OpenCodeConnectionService
+import casa.crux.app.ui.screens.account.configuredProviders
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -27,7 +33,6 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 data class DeploymentsUiState(
     val signedIn: Boolean = false,
@@ -51,6 +56,7 @@ data class DeploymentsUiState(
 class DeploymentsViewModel @Inject constructor(
     private val repository: CruxRepository,
     private val updateRepository: UpdateRepository,
+    @ApplicationContext private val context: Context,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(DeploymentsUiState())
     val uiState: StateFlow<DeploymentsUiState> = _uiState.asStateFlow()
@@ -186,6 +192,7 @@ class DeploymentsViewModel @Inject constructor(
             _uiState.update { it.copy(busyId = deployment.id, error = null) }
             try {
                 val server = repository.connect(deployment)
+                startConnectionService(server)
                 _uiState.update { it.copy(busyId = null) }
                 _connected.emit(server)
             } catch (e: CruxUnauthorizedException) {
@@ -194,6 +201,35 @@ class DeploymentsViewModel @Inject constructor(
                 Log.e(TAG, "Failed to connect deployment", e)
                 _uiState.update { it.copy(busyId = null, error = e.message ?: "Could not connect") }
             }
+        }
+    }
+
+    /**
+     * Hands the server to the connection service, which is what makes it *connected* rather
+     * than merely saved.
+     *
+     * Writing a ServerConfig is not connecting: the session and chat screens read
+     * [casa.crux.app.data.repository.ServerConnectionStateRepository], which only the service
+     * populates. Opening a space without this shows "Server disconnected" on a server that is
+     * running perfectly — connecting used to route through the server list, which did this
+     * step on the user's behalf.
+     *
+     * Deliberately a copy of the service start in HomeViewModel.connectToServer rather than a
+     * refactor of it: that file comes from upstream, and keeping our hands off it is what
+     * keeps a manual port readable.
+     */
+    private fun startConnectionService(server: ServerConfig) {
+        val intent = Intent(context, OpenCodeConnectionService::class.java).apply {
+            putExtra("server_id", server.id)
+            putExtra("server_name", server.name)
+            putExtra("server_url", server.url)
+            putExtra("server_username", server.username)
+            putExtra("server_password", server.password)
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            context.startForegroundService(intent)
+        } else {
+            context.startService(intent)
         }
     }
 
