@@ -17,13 +17,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.foundation.layout.Row
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.Icon
 import androidx.compose.material3.TextButton
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -64,7 +62,6 @@ fun CreateDeploymentDialog(
     var suggestionSpent by rememberSaveable { mutableStateOf(false) }
     var password by remember { mutableStateOf("") }
     var showAdvanced by rememberSaveable { mutableStateOf(false) }
-    var pendingConnect by remember { mutableStateOf<String?>(null) }
     val notConnected = stringResource(R.string.deployments_provider_unconnected_suffix)
     // Keyed on the list: the workspaces arrive after the dialog opens, and a plain remember
     // would hold the null it was born with and leave Create disabled forever.
@@ -104,24 +101,16 @@ fun CreateDeploymentDialog(
                     onSelect = { index ->
                         val candidate = choices.getOrNull(index) ?: return@Picker
                         if (connectedBy.containsKey(candidate)) {
-                            pendingConnect = null
                             onSwitchTarget(candidate)
                         } else {
-                            // Left unselected on purpose: choosing a provider you have no
-                            // account with would arm a Create button that cannot succeed.
-                            pendingConnect = candidate
+                            // Picking one you have no account with *is* the request to connect
+                            // it, so it goes straight to the provider. The selection itself is
+                            // not made: it would arm a Create button that cannot succeed, and
+                            // linking makes it the target on the way back anyway.
+                            onConnectProvider(candidate)
                         }
                     },
                 )
-                pendingConnect?.let { candidate ->
-                    ConnectPrompt(
-                        provider = candidate,
-                        onConnect = {
-                            pendingConnect = null
-                            onConnectProvider(candidate)
-                        },
-                    )
-                }
             }
 
             if (provider == null) {
@@ -229,26 +218,6 @@ fun CreateDeploymentDialog(
                 },
                 confirmEnabled = canCreate,
             )
-        }
-    }
-}
-
-/** Offered instead of a selection, when the provider picked has no account behind it. */
-@Composable
-private fun ConnectPrompt(provider: String, onConnect: () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            stringResource(R.string.deployments_provider_not_connected, providerLabel(provider)),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.weight(1f),
-        )
-        TextButton(onClick = onConnect) {
-            Text(stringResource(R.string.deployments_account_connect))
         }
     }
 }

@@ -787,7 +787,6 @@ Tokens: ~%4$d -&gt; ~%5$d</string>
     <string name="deployments_advanced">Advanced</string>
     <string name="deployments_field_create_in_none">Choose an account</string>
     <string name="deployments_provider_unconnected_suffix">not connected</string>
-    <string name="deployments_provider_not_connected">%1$s is not connected yet</string>
     <string name="deployments_account_title">Accounts</string>
     <string name="deployments_account_open">Accounts</string>
     <string name="deployments_account_disconnect">Disconnect</string>
